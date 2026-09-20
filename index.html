@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Brendan · hamiltonianurst</title>
+<meta name="description" content="Links, projects, essays by Brendan">
+<meta name="color-scheme" content="light dark">
+<style>
+:root{
+  --bg:#ffffff; --ink:#111827; --muted:#5f6673; --rule:#e3e5e8;
+  --link:#1a3fd6; --visited:#6a2bb3;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#15171c; --ink:#e8eaee; --muted:#9aa1ad; --rule:#2c3038; --link:#8ea6ff; --visited:#c49bff; }
+}
+*,*::before,*::after{ box-sizing:border-box; }
+html{ -webkit-text-size-adjust:100%; }
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font:1.0625rem/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0);
+}
+main{ max-width:40rem; margin:0 auto; padding:3rem 1.25rem 0; }
+h1,h2,h3{ line-height:1.2; margin:0; }
+h1{ font-size:clamp(2rem, 8vw, 2.75rem); letter-spacing:-.01em; }
+h2{ font-size:1.5rem; margin-bottom:.5rem; }
+a{ color:var(--link); text-underline-offset:3px; text-decoration-thickness:1px; }
+a:visited{ color:var(--visited); }
+a:hover{ text-decoration-thickness:3px; }
+:focus-visible{ outline:3px solid var(--link); outline-offset:3px; border-radius:2px; }
+ul{ list-style:none; margin:0; padding:0; }
+section{ margin-top:3rem; }
+
+.intro{ margin:.75rem 0 0; color:var(--muted); max-width:32rem; }
+.social{ display:flex; flex-wrap:wrap; gap:.25rem 1rem; margin-top:1rem; font-size:1.05rem; }
+
+.links li{ padding:.5rem 0; }
+.links a{ display:block; text-decoration:none; }
+.links strong{ font-size:1.5rem; text-decoration:underline; text-underline-offset:4px; text-decoration-thickness:1px; }
+.links a:hover strong{ text-decoration-thickness:3px; }
+.links small{ display:block; font-size:1rem; color:var(--muted); }
+
+.essay{ padding:1rem 0; border-top:1px solid var(--rule); }
+.essay time{ font-size:.9rem; color:var(--muted); }
+.essay h3{ font-size:1.2rem; margin:.15rem 0 .3rem; }
+.essay p{ margin:0; }
+/* For paid posts: class="essay paid", wrap the excerpt in <div class="teaser">, add <a class="subscribe"> */
+.paid .teaser{ -webkit-mask-image:linear-gradient(#000 45%,transparent); mask-image:linear-gradient(#000 45%,transparent); max-height:7.5em; overflow:hidden; }
+.subscribe{ display:inline-block; margin-top:.75rem; padding:.6rem 1rem; border-radius:4px; background:var(--link); color:var(--bg) !important; text-decoration:none; font-weight:600; }
+.more{ display:inline-block; margin-top:.5rem; font-weight:600; }
+
+.old li{ padding:.6rem 0; border-top:1px solid var(--rule); }
+.old a{ font-weight:600; }
+.old span{ display:block; color:var(--muted); font-size:1rem; }
+
+details{ margin-top:1.5rem; border-top:1px solid var(--rule); padding-top:1rem; }
+summary{ cursor:pointer; font-weight:700; font-size:1.1rem; }
+summary span{ font-weight:400; color:var(--muted); }
+details h3{ font-size:1rem; font-weight:400; color:var(--muted); margin:1.25rem 0 .25rem; }
+.deep{ font-size:1rem; }
+.deep li{ padding:.3rem 0; }
+.deep a{ font-weight:600; }
+.deep span{ color:var(--muted); }
+
+footer{ margin-top:3rem; padding:2rem 0 3rem; color:var(--muted); font-size:.95rem; border-top:1px solid var(--rule); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Brendan</h1>
+    <p class="intro">I help run game and community events, make odd little things for the internet, and write about the games I can't stop thinking about.</p>
+    <ul class="social" aria-label="Elsewhere">
+      <li><a href="https://hamiltonianurst.substack.com">Substack</a></li>
+      <li><a href="https://x.com/hamiltonianurst">Twitter</a></li>
+      <li><a href="https://www.instagram.com/hamiltonianurst/">Instagram</a></li>
+      <li><a href="https://www.youtube.com/channel/UCBL7kzFsYaFihPoE1DOipPA/">YouTube</a></li>
+      <li><a href="https://admonymous.co/hamiltonianurst">Anonymous feedback</a></li>
+    </ul>
+  </header>
+
+  <section aria-labelledby="now-h">
+    <h2 id="now-h">Current projects</h2>
+    <ul class="links">
+      <li><a href="https://metagame.games"><strong>Metagame</strong><small>A conference on game design and immersive play</small></a></li>
+      <li><a href="https://vibe.camp"><strong>Vibecamp</strong><small>A camping gathering for internet communities</small></a></li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="essays-h">
+    <h2 id="essays-h">Recent essays</h2>
+    <article class="essay">
+      <time datetime="2026-05-11">May 11, 2026</time>
+      <h3><a href="https://hamiltonianurst.substack.com/p/ways-to-win-at-blood-on-the-clocktower">Ways to win at Blood on the Clocktower without having a character ability</a></h3>
+      <p>No I won't stop talking about this game.</p>
+    </article>
+    <article class="essay">
+      <time datetime="2025-11-03">November 3, 2025</time>
+      <h3><a href="https://hamiltonianurst.substack.com/p/the-shortest-possible-pitch-for-why">The shortest possible pitch for why I like Blood on the Clocktower</a></h3>
+      <p>For someone skeptical or in a hurry.</p>
+    </article>
+    <article class="essay">
+      <time datetime="2024-09-21">September 21, 2024</time>
+      <h3><a href="https://hamiltonianurst.substack.com/p/islets-game-reflections">Islets: game reflections</a></h3>
+      <p>In which our hero plays another game and has thoughts, this time on Substack.</p>
+    </article>
+    <a class="more" href="https://hamiltonianurst.substack.com/archive">All essays on Substack</a>
+  </section>
+
+  <section aria-labelledby="old-h">
+    <h2 id="old-h">Old projects</h2>
+    <ul class="old">
+      <li><a href="https://hamiltonianurst.github.io/mindsetscouts/">Mindset Scouts</a><span>Fan art project for The Scout Mindset</span></li>
+      <li><a href="https://involuntarybookclub.thecomicseries.com">Involuntary Book Club</a><span>Book review comics</span></li>
+      <li><a href="https://www.youtube.com/watch?v=VI6r7T8nFX4A">The Gosscoin Megagame Story</a><span>Video</span></li>
+      <li><a href="https://twitter.com/lukeprog/status/1406005463213350921">My nerdiest job application</a><span>Tweet thread</span></li>
+      <li><a href="https://www.youtube.com/playlist?list=PLdRxT4GlpK2-hZ_aj-avSRzeUBZMRdxzB">Brencon 2023 Taskmaster</a><span>Video playlist</span></li>
+    </ul>
+
+    <details>
+      <summary>Deep archive <span>(small experiments and soundboards)</span></summary>
+      <h3>Small web projects</h3>
+      <ul class="deep">
+        <li><a href="https://hamiltonianurst.github.io/newcombs/">Newcomb's</a> <span>a visual aid for explaining functional decision theory</span></li>
+        <li><a href="https://hamiltonianurst.github.io/LO2025/">LO 2025</a> <span>a mini puzzle hunt</span></li>
+        <li><a href="https://hamiltonianurst.github.io/homelibrary/">Home library</a> <span>my bookshelves, OCR'd by Claude</span></li>
+        <li><a href="https://hamiltonianurst.github.io/pdtasl/">Person Do Thing in ASL</a> <span>video links</span></li>
+        <li><a href="https://hamiltonianurst.github.io/pndparty/">Pump and Dump party</a> <span>the party description</span></li>
+      </ul>
+      <h3>Soundboards</h3>
+      <ul class="deep">
+        <li><a href="https://www.101soundboards.com/boards/1357319-old-film-reroll-soundboard">The Film Reroll</a></li>
+        <li><a href="https://www.101soundboards.com/boards/1320886-mike-flores-magic-soundboard">Michael Flores</a></li>
+        <li><a href="https://www.101soundboards.com/boards/21740-jarvisyu-soundboard">Jarvis Yu</a></li>
+      </ul>
+    </details>
+  </section>
+
+  <footer>Brendan · hamiltonianurst</footer>
+</main>
+</body>
+</html>
