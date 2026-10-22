@@ -27,7 +27,7 @@ permissions:
 jobs:
   add:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
 
@@ -35,7 +35,13 @@ jobs:
         with:
           python-version: "3.12"
 
-      - run: pip install trafilatura edge-tts mutagen
+      - run: pip install trafilatura edge-tts mutagen piper-tts lameenc
+
+      # The backup (Piper) voice is ~110 MB; keep it between runs.
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/piper-voices
+          key: piper-voices-en_US-lessac-high
 
       - name: Make episode
         env:

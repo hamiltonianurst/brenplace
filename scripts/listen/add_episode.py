@@ -8,7 +8,7 @@
 Given a URL, the article text is fetched (Substack posts via Substack's own
 API, everything else via trafilatura). Given --text (e.g. a paywalled post you
 selected in your own browser), that text is used as-is and --url is only the
-"source" link. The text is read aloud with edge-tts.
+"source" link. The text is read aloud with edge-tts, or Piper if that fails.
 
 Each episode is two committed files in <FEED_DIR>/episodes/: the MP3 and a
 small .json with its metadata. feed.xml and episodes.json are NOT committed;
@@ -35,6 +35,11 @@ EP_DIR = FEED_DIR / "episodes"
 SITE = "https://bren.place/" + FEED_DIR.name + "/"
 VOICE = os.environ.get("LISTEN_VOICE", "en-US-AndrewMultilingualNeural")
 RATE = os.environ.get("LISTEN_RATE", "+0%")         # e.g. "+15%" to read faster
+ENGINE = os.environ.get("LISTEN_ENGINE", "auto")    # auto (Edge, then Piper) | edge | piper
+EDGE_STALL = 45                                     # seconds without audio before giving up on Edge
+PIPER_VOICE = os.environ.get("LISTEN_PIPER_VOICE", "en_US-lessac-high")
+PIPER_SPEED = float(os.environ.get("LISTEN_PIPER_SPEED", "1.0"))  # <1 is faster, e.g. 0.87
+PIPER_DIR = Path(os.environ.get("PIPER_VOICES", Path.home() / ".cache" / "piper-voices"))
 KEEP_DAYS = 60
 MAX_EPISODES = 100
 MAX_CHARS = 200_000                                  # ~3.5 hours of audio; bail on junk pages
@@ -160,15 +165,73 @@ def clean(text):
 
 # ---------- audio ----------
 
-async def speak(text, path):
+def speak(text, path):
+    """Microsoft's Edge voices sound best but are an unofficial service that
+    sometimes stalls or breaks. If it does, fall back to Piper, which runs
+    entirely on the GitHub runner and can't be blocked."""
+    if ENGINE in ("auto", "edge"):
+        try:
+            asyncio.run(speak_edge(text, path))
+            return "edge"
+        except Exception as e:
+            path.unlink(missing_ok=True)
+            if ENGINE == "edge":
+                die(f"Edge text-to-speech failed: {e}")
+            print(f"::warning title=Used backup voice::Edge text-to-speech failed ({e}); "
+                  f"using Piper instead." if os.environ.get("GITHUB_ACTIONS")
+                  else f"Edge TTS failed ({e}); using Piper.", flush=True)
+    speak_piper(text, path)
+    return "piper"
+
+
+async def speak_edge(text, path):
     import edge_tts
-    # Generous: a long essay takes a few minutes. Without a cap, a stalled
-    # connection would hang the run until the job timeout.
-    limit = 120 + len(text) // 100
+    # Give up if no audio arrives for EDGE_STALL seconds. A total time limit
+    # would have to be huge for long essays; a stall limit catches hangs fast.
+    stream = edge_tts.Communicate(text, VOICE, rate=RATE).stream().__aiter__()
+    got_audio = False
+    with open(path, "wb") as f:
+        while True:
+            try:
+                chunk = await asyncio.wait_for(stream.__anext__(), EDGE_STALL)
+            except StopAsyncIteration:
+                break
+            except asyncio.TimeoutError:
+                raise RuntimeError(f"no audio for {EDGE_STALL}s") from None
+            if chunk["type"] == "audio":
+                f.write(chunk["data"])
+                got_audio = True
+    if not got_audio:
+        raise RuntimeError("no audio received")
+
+
+def speak_piper(text, path):
+    import subprocess
+    import wave
+    import lameenc
+    from piper import PiperVoice, SynthesisConfig
+
+    model = PIPER_DIR / f"{PIPER_VOICE}.onnx"
+    if not model.exists():
+        PIPER_DIR.mkdir(parents=True, exist_ok=True)
+        subprocess.run([sys.executable, "-m", "piper.download_voices", PIPER_VOICE,
+                        "--download-dir", str(PIPER_DIR)], check=True)
+    voice = PiperVoice.load(model)
+    wav_path = path.with_suffix(".wav")
     try:
-        await asyncio.wait_for(edge_tts.Communicate(text, VOICE, rate=RATE).save(str(path)), limit)
-    except asyncio.TimeoutError:
-        die(f"Text-to-speech didn't finish within {limit // 60} minutes; try again later.")
+        cfg = SynthesisConfig(length_scale=PIPER_SPEED)
+        with wave.open(str(wav_path), "wb") as wf:
+            voice.synthesize_wav(text, wf, syn_config=cfg)
+        with wave.open(str(wav_path), "rb") as wf:
+            enc = lameenc.Encoder()
+            enc.set_bit_rate(64)
+            enc.set_in_sample_rate(wf.getframerate())
+            enc.set_channels(wf.getnchannels())
+            enc.set_quality(2)
+            mp3 = enc.encode(wf.readframes(wf.getnframes())) + enc.flush()
+        path.write_bytes(mp3)
+    finally:
+        wav_path.unlink(missing_ok=True)
 
 
 def duration_seconds(path):
@@ -284,18 +347,18 @@ def add(raw_url, text, title_override):
     stem = f"{added:%Y%m%d}-{slug(title)}-{ep_id[:4]}"
     out = EP_DIR / f"{stem}.mp3"
 
-    print(f"Speaking {len(body):,} chars as '{title}' with {VOICE}…", flush=True)
+    print(f"Speaking {len(body):,} chars as '{title}'…", flush=True)
     try:
-        asyncio.run(speak(intro + "\n\n" + body, out))
+        engine = speak(intro + "\n\n" + body, out)
     except BaseException:
         out.unlink(missing_ok=True)                      # don't leave a half-written MP3
         raise
 
-    ep = {"id": ep_id, "title": title, "url": url, "byline": byline,
+    ep = {"id": ep_id, "title": title, "url": url, "byline": byline, "engine": engine,
           "added": added.isoformat(), "file": out.name,
           "bytes": out.stat().st_size, "seconds": duration_seconds(out)}
     (EP_DIR / f"{stem}.json").write_text(json.dumps(ep, indent=1) + "\n")
-    print(f"Wrote {out.name} ({ep['bytes'] / 1e6:.1f} MB, {hms(ep['seconds'])})")
+    print(f"Wrote {out.name} with {engine} ({ep['bytes'] / 1e6:.1f} MB, {hms(ep['seconds'])})")
 
 
 def main():
