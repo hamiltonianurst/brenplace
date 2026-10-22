@@ -170,16 +170,34 @@ def speak(text, path):
     sometimes stalls or breaks. If it does, fall back to Piper, which runs
     entirely on the GitHub runner and can't be blocked."""
     if ENGINE in ("auto", "edge"):
+        # Run Edge in a child process with a hard time limit. Edge normally reads
+        # ~1,000 characters in a few seconds, but it sometimes trickles audio so
+        # slowly that a short post takes 7 minutes; this budget catches that, and
+        # killing a process works even if edge-tts blocks its own event loop.
+        budget = 60 + len(text) // 40          # 1k chars -> 85 s, 40k chars -> ~18 min
+        if ENGINE == "edge":
+            budget *= 4
+        import subprocess
+        import tempfile
+        with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as tf:
+            tf.write(text)
         try:
-            asyncio.run(speak_edge(text, path))
+            subprocess.run([sys.executable, __file__, "--edge-child", tf.name, str(path)],
+                           check=True, timeout=budget)
+            Path(tf.name).unlink(missing_ok=True)
             return "edge"
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - any Edge problem means "use Piper"
+            if isinstance(e, subprocess.TimeoutExpired):
+                e = f"too slow, gave up after {budget} s"
+            elif isinstance(e, subprocess.CalledProcessError):
+                e = "failed (see the log above)"
             path.unlink(missing_ok=True)
+            Path(tf.name).unlink(missing_ok=True)
             if ENGINE == "edge":
-                die(f"Edge text-to-speech failed: {e}")
-            print(f"::warning title=Used backup voice::Edge text-to-speech failed ({e}); "
+                die(f"Edge text-to-speech {e}")
+            print(f"::warning title=Used backup voice::Edge text-to-speech {e}; "
                   f"using Piper instead." if os.environ.get("GITHUB_ACTIONS")
-                  else f"Edge TTS failed ({e}); using Piper.", flush=True)
+                  else f"Edge TTS {e}; using Piper.", flush=True)
     speak_piper(text, path)
     return "piper"
 
@@ -215,7 +233,7 @@ def speak_piper(text, path):
     if not model.exists():
         PIPER_DIR.mkdir(parents=True, exist_ok=True)
         subprocess.run([sys.executable, "-m", "piper.download_voices", PIPER_VOICE,
-                        "--download-dir", str(PIPER_DIR)], check=True)
+                        "--download-dir", str(PIPER_DIR)], check=True, timeout=600)
     voice = PiperVoice.load(model)
     wav_path = path.with_suffix(".wav")
     try:
@@ -367,7 +385,16 @@ def main():
     ap.add_argument("--text", default="")
     ap.add_argument("--title", default="")
     ap.add_argument("--feed-only", action="store_true", help="just rebuild feed.xml + episodes.json")
+    ap.add_argument("--edge-child", nargs=2, metavar=("TEXTFILE", "MP3"), help=argparse.SUPPRESS)
     a = ap.parse_args()
+
+    if a.edge_child:                                   # internal: see speak()
+        try:
+            asyncio.run(speak_edge(Path(a.edge_child[0]).read_text(), Path(a.edge_child[1])))
+        except Exception as e:                         # parent reports it; no error annotation
+            print(f"Edge TTS: {type(e).__name__}: {e}", file=sys.stderr)
+            sys.exit(1)
+        return
 
     EP_DIR.mkdir(parents=True, exist_ok=True)
     if not a.feed_only:
