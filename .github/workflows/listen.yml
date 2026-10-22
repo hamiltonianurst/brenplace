@@ -16,21 +16,22 @@ on:
         required: false
 
 permissions:
-  contents: write   # commit the MP3 + feed
+  contents: write   # commit the MP3 + its metadata
   actions: write    # kick off the site deploy afterwards
 
-concurrency:
-  group: listen     # queue, don't cancel: two quick shares should both land
-  cancel-in-progress: false
+# No concurrency group on purpose: GitHub keeps only one *waiting* run per
+# group and cancels the rest, which would drop articles sent in quick
+# succession. Each episode is its own pair of files, so parallel runs don't
+# conflict; the push step below just rebases and retries.
 
 jobs:
   add:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -45,16 +46,21 @@ jobs:
 
       - name: Commit
         env:
-          TITLE: ${{ inputs.title || inputs.url }}
+          TITLE: ${{ inputs.title || inputs.url || 'selected text' }}
         run: |
           git config user.name "listen-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A listen-x11z2ucwncju
+          git add -A listen-x11z2ucwncju/episodes
           git commit -m "listen: add ${TITLE:0:72}"
-          for i in 1 2 3; do git pull --rebase -q && git push && break; sleep 5; done
+          for i in 1 2 3 4 5; do
+            git pull --rebase -q origin main && git push origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
+          exit 1
 
       # Pushes made with GITHUB_TOKEN don't trigger other workflows, so start
       # the site deploy explicitly (workflow_dispatch is the allowed exception).
+      # The deploy rebuilds feed.xml from the episode files.
       - name: Deploy site
         env:
           GH_TOKEN: ${{ github.token }}
