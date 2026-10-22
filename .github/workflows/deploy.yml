@@ -28,6 +28,9 @@ jobs:
       - name: Pull latest essays from Substack
         run: python3 scripts/update_essays.py
 
+      - name: Build listen feed from episode files
+        run: python3 scripts/listen/add_episode.py --feed-only
+
       - name: Collect site files
         run: rsync -a --exclude '.git' --exclude '.github' --exclude 'scripts' ./ _site/
 
