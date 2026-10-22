@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Read later</title>
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#15171c">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<style>
+:root{
+  --bg:#ffffff; --ink:#111827; --muted:#5f6673; --rule:#e3e5e8;
+  --link:#1a3fd6; --ok:#13795b; --bad:#b42318; --field:#f4f5f7;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#15171c; --ink:#e8eaee; --muted:#9aa1ad; --rule:#2c3038; --link:#8ea6ff; --ok:#5fd3a6; --bad:#ff8a80; --field:#1e2128; }
+}
+*,*::before,*::after{ box-sizing:border-box; }
+html{ -webkit-text-size-adjust:100%; }
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font:1.0625rem/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0);
+}
+main{ max-width:40rem; margin:0 auto; padding:2.5rem 1rem 3rem; }
+h1{ font-size:2rem; line-height:1.2; margin:0; }
+h2{ font-size:1.15rem; margin:2.5rem 0 .5rem; }
+p{ margin:.5rem 0; }
+a{ color:var(--link); text-underline-offset:3px; }
+.muted{ color:var(--muted); }
+small{ font-size:.9rem; }
+form{ display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.5rem; }
+input{ flex:1 1 14rem; min-width:0; font:inherit; padding:.55rem .7rem; border:1px solid var(--rule);
+  border-radius:6px; background:var(--field); color:var(--ink); }
+button{ font:inherit; padding:.55rem 1rem; border-radius:6px; border:1px solid var(--ink);
+  background:var(--ink); color:var(--bg); cursor:pointer; }
+button.quiet{ background:transparent; color:var(--ink); border-color:var(--rule); }
+:focus-visible{ outline:3px solid var(--link); outline-offset:2px; }
+#status{ margin-top:1.25rem; padding:.75rem 1rem; border-left:3px solid var(--rule); display:none; }
+#status.show{ display:block; }
+#status.ok{ border-color:var(--ok); }
+#status.bad{ border-color:var(--bad); }
+#status strong{ display:block; }
+ul{ list-style:none; padding:0; margin:0; }
+li{ padding:.5rem 0; border-top:1px solid var(--rule); }
+li small{ display:block; }
+code{ font-size:.9em; word-break:break-all; }
+.bm{ display:inline-block; padding:.4rem .8rem; border:1px dashed var(--muted); border-radius:6px; text-decoration:none; }
+[hidden]{ display:none !important; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Read later</h1>
+  <p class="muted">Send an article here and it becomes an episode in your podcast feed a few minutes later.</p>
+
+  <div id="status" role="status" aria-live="polite"></div>
+
+  <section id="setup" hidden>
+    <h2>One-time setup on this device</h2>
+    <p>Paste a GitHub fine-grained token for <b>hamiltonianurst/brenplace</b> with <b>Actions: Read and write</b> permission. It's kept only in this browser.</p>
+    <form id="tokenForm">
+      <input id="token" type="password" autocomplete="off" placeholder="github_pat_…" required>
+      <button>Save</button>
+    </form>
+  </section>
+
+  <section id="manual">
+    <h2>Add an article</h2>
+    <form id="urlForm">
+      <input id="url" type="url" inputmode="url" placeholder="https://…" required>
+      <button>Send</button>
+    </form>
+  </section>
+
+  <section>
+    <h2>Recent episodes</h2>
+    <ul id="recent"><li class="muted">Loading…</li></ul>
+  </section>
+
+  <section>
+    <h2>Subscribe</h2>
+    <p>Add this URL in Castbox (Personal → Add podcast by RSS link):</p>
+    <p><code id="feedUrl"></code> <button class="quiet" id="copyFeed" type="button">Copy</button></p>
+  </section>
+
+  <section>
+    <h2>Send from a computer</h2>
+    <p>Drag this to your bookmarks bar. Click it on any article. If you've selected text first (for paywalled posts you can read), it sends the selection instead of the link.</p>
+    <p><a class="bm" id="bookmarklet" href="#">Listen later</a></p>
+    <p><small class="muted">On Android, install this page (Chrome menu → Add to Home screen) and “Read later” appears in the share sheet.</small></p>
+    <p><button class="quiet" id="resetToken" type="button">Change token</button></p>
+  </section>
+</main>
+
+<script>
+const REPO = "hamiltonianurst/brenplace";
+const WORKFLOW = "listen.yml";
+const MAX_TEXT = 60000;     // GitHub caps workflow inputs at ~65k characters total
+const HERE = new URL("./", location.href).href;
+const $ = (id) => document.getElementById(id);
+
+function getToken(){ try { return localStorage.getItem("listen_gh_token") || ""; } catch { return ""; } }
+function setToken(t){ try { t ? localStorage.setItem("listen_gh_token", t) : localStorage.removeItem("listen_gh_token"); } catch {} }
+
+function status(kind, title, detail){
+  const s = $("status");
+  s.className = "show " + kind;
+  s.replaceChildren();
+  const b = document.createElement("strong"); b.textContent = title; s.append(b);
+  if (detail) { const d = document.createElement("span"); d.innerHTML = detail; s.append(d); }
+}
+
+// Incoming item: from the Android share sheet (?title=&text=&url=) or the bookmarklet (#…).
+function incoming(){
+  const p = new URLSearchParams(location.search);
+  for (const [k, v] of new URLSearchParams(location.hash.slice(1))) p.set(k, v);
+  let url = (p.get("url") || "").trim(), text = (p.get("text") || "").trim(), title = (p.get("title") || "").trim();
+  // Chrome on Android usually shares the link inside `text`, not `url`.
+  if (!url && text) {
+    const m = text.match(/https?:\/\/\S+/);
+    if (m && text.length < 600) { url = m[0]; text = ""; }
+  }
+  if (text.length < 200) text = "";          // a short blurb isn't the article
+  if (!url && !text) return null;
+  return { url, text, title };
+}
+
+async function send(item){
+  const token = getToken();
+  if (!token) { status("bad", "Set up a token first (below)."); $("setup").hidden = false; return false; }
+  if (item.text.length > MAX_TEXT) {
+    status("bad", "That selection is too long to send as text.",
+      ` It's ${item.text.length.toLocaleString()} characters; the limit is ${MAX_TEXT.toLocaleString()}. Try sending just the link.`);
+    return false;
+  }
+  status("", "Sending…", " " + escapeHtml(item.title || item.url || "selected text"));
+  const inputs = { url: item.url };
+  if (item.title) inputs.title = item.title;
+  if (item.text) inputs.text = item.text;
+  try {
+    const r = await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/${WORKFLOW}/dispatches`, {
+      method: "POST",
+      headers: { "Authorization": "Bearer " + token, "Accept": "application/vnd.github+json",
+                 "X-GitHub-Api-Version": "2022-11-28" },
+      body: JSON.stringify({ ref: "main", inputs }),
+    });
+    if (r.status === 204 || r.ok) {
+      status("ok", "Queued ✓", ` It should show up in your feed in about 3–5 minutes.
+        <br><small><a href="https://github.com/${REPO}/actions/workflows/${WORKFLOW}" target="_blank" rel="noopener">Watch it run</a></small>`);
+      history.replaceState(null, "", HERE);
+      return true;
+    }
+    const why = { 401: "The token was rejected — it may have expired.",
+                  403: "The token doesn't have Actions: Read and write on this repo.",
+                  404: "GitHub couldn't find the workflow (or the token can't see the repo)." }[r.status]
+               || `GitHub said ${r.status}.`;
+    status("bad", "Didn't send.", " " + why);
+  } catch (e) {
+    status("bad", "Didn't send.", " Network error: " + escapeHtml(String(e.message || e)));
+  }
+  return false;
+}
+
+function escapeHtml(s){ return s.replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
+
+async function loadRecent(){
+  const ul = $("recent");
+  try {
+    const r = await fetch("episodes.json", { cache: "no-store" });
+    const eps = r.ok ? await r.json() : [];
+    ul.replaceChildren();
+    if (!eps.length) { ul.innerHTML = '<li class="muted">Nothing yet.</li>'; return; }
+    for (const ep of eps.slice().sort((a, b) => b.added.localeCompare(a.added)).slice(0, 8)) {
+      const li = document.createElement("li");
+      const a = document.createElement("a"); a.href = "episodes/" + ep.file; a.textContent = ep.title;
+      const s = document.createElement("small"); s.className = "muted";
+      const mins = Math.round((ep.seconds || 0) / 60);
+      s.textContent = [ep.byline, mins ? mins + " min" : "", new Date(ep.added).toLocaleDateString()].filter(Boolean).join(" · ");
+      li.append(a, s); ul.append(li);
+    }
+  } catch { ul.innerHTML = '<li class="muted">Couldn\'t load the episode list.</li>'; }
+}
+
+// --- wire up ---
+$("feedUrl").textContent = HERE + "feed.xml";
+$("copyFeed").onclick = async () => { try { await navigator.clipboard.writeText(HERE + "feed.xml"); $("copyFeed").textContent = "Copied"; } catch {} };
+
+$("bookmarklet").href = "javascript:(()=>{const s=String(getSelection()).trim();const p=new URLSearchParams({url:location.href,title:document.title});if(s.length>200)p.set('text',s);open('"
+  + HERE + "#'+p,'_blank','popup,width=480,height=640')})()";
+$("bookmarklet").onclick = (e) => { e.preventDefault(); status("", "Drag that link to your bookmarks bar instead of clicking it here."); };
+
+$("tokenForm").onsubmit = (e) => {
+  e.preventDefault(); setToken($("token").value.trim()); $("token").value = "";
+  $("setup").hidden = true; status("ok", "Token saved on this device.");
+  const item = incoming(); if (item) send(item);
+};
+$("resetToken").onclick = () => { setToken(""); $("setup").hidden = false; $("token").focus(); };
+
+$("urlForm").onsubmit = async (e) => {
+  e.preventDefault();
+  if (await send({ url: $("url").value.trim(), text: "", title: "" })) $("url").value = "";
+};
+
+if (!getToken()) $("setup").hidden = false;
+const item = incoming();
+if (item) send(item);
+loadRecent();
+
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+</script>
+</body>
+</html>

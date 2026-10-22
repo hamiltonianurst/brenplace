@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Brendan's read-later</title>
+    <link>https://bren.place/listen-x11z2ucwncju/</link>
+    <atom:link href="https://bren.place/listen-x11z2ucwncju/feed.xml" rel="self" type="application/rss+xml"/>
+    <description>Articles saved for listening. Private feed.</description>
+    <language>en-us</language>
+    <lastBuildDate>Thu, 22 Oct 2026 18:27:55 +0000</lastBuildDate>
+    <itunes:author>bren.place</itunes:author>
+    <itunes:image href="https://bren.place/listen-x11z2ucwncju/cover.png"/>
+    <itunes:explicit>false</itunes:explicit>
+    <itunes:block>Yes</itunes:block>
+    <itunes:category text="Society &amp; Culture"/>
+
+  </channel>
+</rss>

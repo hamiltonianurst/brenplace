@@ -1,0 +1,61 @@
+name: Add article to listen feed
+
+# Triggered by the share page at bren.place/listen-x11z2ucwncju/ (or the
+# "Run workflow" button in the Actions tab).
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: Article URL
+        required: false
+      title:
+        description: Title override (optional)
+        required: false
+      text:
+        description: Article text, if sending text instead of fetching the URL
+        required: false
+
+permissions:
+  contents: write   # commit the MP3 + feed
+  actions: write    # kick off the site deploy afterwards
+
+concurrency:
+  group: listen     # queue, don't cancel: two quick shares should both land
+  cancel-in-progress: false
+
+jobs:
+  add:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install trafilatura edge-tts mutagen
+
+      - name: Make episode
+        env:
+          URL: ${{ inputs.url }}
+          TITLE: ${{ inputs.title }}
+          TEXT: ${{ inputs.text }}
+        run: python3 scripts/listen/add_episode.py --url "$URL" --title "$TITLE" --text "$TEXT"
+
+      - name: Commit
+        env:
+          TITLE: ${{ inputs.title || inputs.url }}
+        run: |
+          git config user.name "listen-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A listen-x11z2ucwncju
+          git commit -m "listen: add ${TITLE:0:72}"
+          for i in 1 2 3; do git pull --rebase -q && git push && break; sleep 5; done
+
+      # Pushes made with GITHUB_TOKEN don't trigger other workflows, so start
+      # the site deploy explicitly (workflow_dispatch is the allowed exception).
+      - name: Deploy site
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy.yml --ref main
