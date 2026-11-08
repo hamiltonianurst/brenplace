@@ -72,6 +72,7 @@ a{ color:var(--text); text-underline-offset:3px; }
 .animals{ font-size:clamp(2.6rem,12vw,3.5rem); line-height:1.15; letter-spacing:.08em; }
 .setup .btn-go{ margin-top:1.6rem; }
 .credit{ margin-top:.5rem; }
+.crowd{ margin-top:.5rem; font-size:.95rem; color:var(--text-dim); }
 .rules-box{ margin-top:2rem; border-top:1px solid var(--enamel-line); padding-top:1rem; }
 .rules-box summary{ cursor:pointer; font-weight:600; }
 .rules{ margin:.7rem 0 0; padding:0; list-style:none; }
@@ -537,7 +538,8 @@ function viewSetup(){
     <h1 class="wordmark">Namecodes</h1>
     <p class="tagline">Alice has to get a word to Bob. Mallory is listening.</p>
     <fieldset class="field"><legend>Players</legend>
-      <div class="seg">${seg("count",3,n,"3 players")}${seg("count",4,n,"4, two Mallorys")}</div></fieldset>
+      <div class="seg">${seg("count",3,n,"3 players")}${seg("count",4,n,"4, two Mallorys")}</div>
+      <p class="crowd">Playing in front of a crowd? <a href="../keypublic/">Click here</a></p></fieldset>
     <div class="field"><span class="field-label">Each player claims an animal for the whole game</span>
       <p class="animals">${S.animals.slice(0,n).join(" ")}</p></div>
     <fieldset class="field"><legend>Time per round</legend>
