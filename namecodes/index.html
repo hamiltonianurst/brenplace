@@ -1,0 +1,731 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Namecodes</title>
+<meta name="description" content="Alice has to get a word to Bob while Mallory listens. A pass-the-device word game for 3 or 4 players.">
+<meta name="theme-color" content="#2f4842">
+<meta name="color-scheme" content="dark">
+<style>
+@font-face{ font-family:"Big Shoulders"; src:url(fonts/big-shoulders-display-latin-700-normal.woff2) format("woff2"); font-weight:700; font-display:swap; }
+@font-face{ font-family:"Big Shoulders Stencil"; src:url(fonts/big-shoulders-stencil-display-latin-800-normal.woff2) format("woff2"); font-weight:800; font-display:swap; }
+@font-face{ font-family:"Barlow"; src:url(fonts/barlow-latin-400-normal.woff2) format("woff2"); font-weight:400; font-display:swap; }
+@font-face{ font-family:"Barlow"; src:url(fonts/barlow-latin-600-normal.woff2) format("woff2"); font-weight:600; font-display:swap; }
+
+:root{
+  --enamel:#2f4842;      /* machine body */
+  --enamel-deep:#22352f; /* recessed panels */
+  --enamel-line:#49655d;
+  --ivory:#ece4cd;       /* key caps */
+  --ivory-lip:#a99f83;
+  --key-ink:#20302b;
+  --text:#eef0e6;
+  --text-dim:#b4c4bb;
+  --lamp:#ffb62e;        /* Alice, the target */
+  --lamp-deep:#b87400;
+  --bob:#86dcd3;
+  --mallory:#ff8d7a;
+  --alarm:#ff6a4d;
+  --display:"Big Shoulders","Arial Narrow",Impact,sans-serif;
+  --stencil:"Big Shoulders Stencil","Big Shoulders","Arial Narrow",Impact,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --key:clamp(.95rem,4.7vw,1.4rem);
+  --gap:clamp(.3rem,1.4vw,.5rem);
+}
+*,*::before,*::after{ box-sizing:border-box; }
+html{ -webkit-text-size-adjust:100%; }
+body{
+  margin:0; min-height:100dvh; color:var(--text); background-color:var(--enamel);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.55' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .55 -.14'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E");
+  font:400 1.0625rem/1.45 var(--body);
+  -webkit-tap-highlight-color:transparent;
+}
+button,input{ font:inherit; color:inherit; }
+button{ cursor:pointer; touch-action:manipulation; }
+button:disabled{ cursor:default; }
+:focus-visible{ outline:3px solid var(--text); outline-offset:2px; }
+h1,h2,p{ margin:0; }
+a{ color:var(--text); text-underline-offset:3px; }
+
+/* Buttons */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; min-height:3rem; padding:.4rem 1rem;
+  font:700 1.3rem/1 var(--display); letter-spacing:.02em;
+  color:var(--text); background:var(--enamel-deep); border:2px solid var(--enamel-line); border-radius:6px;
+}
+.btn:disabled{ opacity:.45; }
+.btn-go{ color:var(--key-ink); background:var(--lamp); border-color:var(--lamp); box-shadow:0 3px 0 var(--lamp-deep); }
+.btn-go:active:not(:disabled){ transform:translateY(2px); box-shadow:0 1px 0 var(--lamp-deep); }
+.btn-wide{ width:100%; }
+.btn-small{ min-height:2.5rem; padding:.2rem .8rem; font-size:1.1rem; }
+
+/* Setup */
+.setup{ max-width:29rem; margin:0 auto; padding:calc(env(safe-area-inset-top,0px) + 2.25rem) 1.1rem 3rem; }
+.wordmark{ font:800 clamp(4rem,20vw,6.5rem)/.85 var(--stencil); color:var(--ivory); }
+.tagline{ margin-top:.75rem; font-size:1.2rem; }
+.field{ margin-top:1.6rem; border:0; padding:0; }
+.field legend,.field-label{ display:block; padding:0; margin-bottom:.45rem; font-weight:600; }
+.seg{ display:grid; grid-auto-flow:column; grid-auto-columns:1fr; gap:.4rem; }
+.seg .btn{ font-size:1.2rem; }
+.seg .btn[aria-pressed="true"]{ color:var(--key-ink); background:var(--ivory); border-color:var(--ivory); }
+.name-input{
+  display:block; width:100%; min-height:3rem; margin-bottom:.45rem; padding:.3rem .8rem; font-size:1.125rem;
+  color:var(--key-ink); background:var(--ivory); border:2px solid var(--ivory); border-radius:6px;
+}
+.name-input::placeholder{ color:#6d705f; }
+.error{ margin-top:1rem; color:var(--mallory); font-weight:600; }
+.setup .btn-go{ margin-top:1.6rem; }
+.rules-box{ margin-top:2rem; border-top:1px solid var(--enamel-line); padding-top:1rem; }
+.rules-box summary{ cursor:pointer; font-weight:600; }
+.rules{ margin:.7rem 0 0; padding:0; list-style:none; }
+.rules li{ padding:.3rem 0; }
+.rules b{ font-weight:600; }
+.fine{ margin-top:2rem; font-size:.95rem; color:var(--text-dim); }
+
+/* Who's who */
+.alice{ --role:var(--lamp); }
+.bob{ --role:var(--bob); }
+.mallory{ --role:var(--mallory); }
+.role-name{ color:var(--role); font-weight:600; }
+
+/* Single-column screens: roles and hand-offs */
+.stage{
+  min-height:100dvh; max-width:31rem; margin:0 auto; display:flex; flex-direction:column; justify-content:center;
+  padding:calc(env(safe-area-inset-top,0px) + 1.25rem) 1.1rem calc(env(safe-area-inset-bottom,0px) + 1.25rem);
+}
+.stage-title{ font:800 clamp(3rem,13vw,4.5rem)/.95 var(--stencil); color:var(--ivory); overflow-wrap:anywhere; }
+.stage-note{ margin-top:.8rem; font-size:1.2rem; }
+.stage .btn-go{ margin-top:1.75rem; min-height:3.5rem; font-size:1.5rem; }
+.stage .btn-quiet{ margin-top:.6rem; }
+.cast{ margin:1.5rem 0 0; padding:0; list-style:none; }
+.cast li{ padding:.7rem 0; border-top:1px solid var(--enamel-line); }
+.cast strong{ display:block; font:700 2rem/1.05 var(--display); color:var(--role); overflow-wrap:anywhere; }
+.cast span{ color:var(--text-dim); }
+
+/* The machine */
+.game{
+  display:flex; flex-direction:column; gap:.7rem; min-height:100dvh;
+  padding:calc(env(safe-area-inset-top,0px) + .6rem) .6rem calc(env(safe-area-inset-bottom,0px) + .9rem);
+}
+.deck{ order:2; }
+.side{ order:1; display:flex; flex-direction:column; gap:.7rem; }
+.below{ order:3; }
+.topline{ display:flex; align-items:center; justify-content:space-between; gap:.5rem; }
+.topline h1{ font:700 1.5rem/1 var(--display); }
+
+.board{ display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:var(--gap); }
+.key{
+  position:relative; display:flex; align-items:center; justify-content:center; min-width:0; min-height:clamp(3.5rem,15.5vw,5.5rem); padding:0 2px;
+  container-type:inline-size;
+  color:var(--key-ink); background:var(--ivory); border:0; border-radius:5px; box-shadow:0 4px 0 var(--ivory-lip);
+  user-select:none; -webkit-user-select:none;
+}
+.key-word{ font:700 min(var(--key),calc(205cqw / var(--n,6)))/1 var(--display); letter-spacing:.01em; white-space:nowrap; }
+button.key:active{ transform:translateY(3px); box-shadow:0 1px 0 var(--ivory-lip); }
+.key.is-pending{ background:var(--text); box-shadow:0 0 0 3px var(--role),0 4px 0 3px var(--role); }
+.key.is-lit{ background:var(--lamp); box-shadow:0 0 0 2px #ffdc8f,0 0 26px 5px rgba(255,182,46,.65); z-index:1; }
+.key.is-lit.ignite{ animation:ignite .7s steps(1) both; }
+.key.is-off{ background:#b9b49f; box-shadow:0 4px 0 #7f7a66; }
+@keyframes ignite{
+  0%{ background:var(--ivory); box-shadow:0 4px 0 var(--ivory-lip); }
+  18%{ background:var(--lamp); box-shadow:0 0 26px 5px rgba(255,182,46,.65); }
+  32%{ background:var(--ivory); box-shadow:0 4px 0 var(--ivory-lip); }
+  52%{ background:var(--lamp); box-shadow:0 0 26px 5px rgba(255,182,46,.65); }
+  64%{ background:var(--ivory); box-shadow:0 4px 0 var(--ivory-lip); }
+  80%{ background:var(--lamp); box-shadow:0 0 0 2px #ffdc8f,0 0 26px 5px rgba(255,182,46,.65); }
+}
+.pins{ position:absolute; top:-5px; right:-3px; display:flex; gap:2px; z-index:2; }
+.pin{
+  display:grid; place-items:center; width:1.35rem; height:1.35rem; border-radius:50%;
+  font:600 .8rem/1 var(--body); color:var(--key-ink); background:var(--role); border:2px solid var(--enamel-deep);
+}
+
+.panel{ padding:.75rem; background:var(--enamel-deep); border:2px solid var(--enamel-line); border-radius:8px; }
+.clock-row{ display:flex; align-items:center; gap:.7rem; }
+.clock{ flex:0 0 auto; font:800 4.2rem/.9 var(--stencil); font-variant-numeric:tabular-nums; color:var(--lamp); }
+.clock.is-low{ color:var(--alarm); }
+.controls{ flex:1 1 auto; display:grid; grid-template-columns:1fr 1fr; gap:.4rem; min-width:0; }
+.controls .btn-go{ grid-column:1 / -1; }
+.controls .btn-small{ padding:.2rem .25rem; white-space:nowrap; }
+.keys-hint{ display:none; margin-top:.55rem; font-size:.95rem; color:var(--text-dim); }
+@media (hover:hover) and (pointer:fine){ .keys-hint{ display:block; } }
+
+.prompt{ font:700 1.9rem/1.05 var(--display); overflow-wrap:anywhere; }
+.prompt em{ font-style:normal; color:var(--role); }
+.panel-note{ margin-top:.3rem; color:var(--text-dim); }
+.panel .btn-wide{ margin-top:.7rem; }
+.panel .btn-quiet{ margin-top:.45rem; }
+
+.secret-line{ display:flex; align-items:baseline; justify-content:space-between; gap:.75rem; padding:.2rem 0; }
+.secret-line span{ color:var(--text-dim); }
+.secret-line strong{ font:800 2.8rem/1 var(--stencil); color:var(--ivory); overflow-wrap:anywhere; text-align:right; }
+.secret-line.is-target strong{ color:var(--lamp); }
+
+.outcomes{ margin:.6rem 0 0; padding:0; list-style:none; }
+.outcomes li{ padding:.25rem 0; }
+.gain{ color:var(--lamp); font-weight:600; }
+.answer{ font:800 2.7rem/1 var(--stencil); color:var(--lamp); overflow-wrap:anywhere; }
+.answer-note{ margin-top:.2rem; }
+.answer-note b{ font-weight:600; }
+
+.scores{ width:100%; border-collapse:collapse; }
+.scores th,.scores td{ padding:.32rem 0; border-top:1px solid var(--enamel-line); font-weight:400; text-align:left; }
+.scores tr:first-child th,.scores tr:first-child td{ border-top:0; }
+.scores .who{ font-weight:600; overflow-wrap:anywhere; }
+.scores .role-cell{ padding:0 .5rem; color:var(--role); white-space:nowrap; }
+.scores .pts{ width:3.6rem; font:700 1.5rem/1 var(--display); text-align:right; white-space:nowrap; }
+.scores .plus{ font:600 1rem/1 var(--body); color:var(--lamp); margin-right:.3rem; }
+
+/* Menu */
+.scrim{ position:fixed; inset:0; z-index:10; display:flex; align-items:flex-end; justify-content:center; background:rgba(16,26,23,.72); }
+.sheet{
+  width:100%; max-width:30rem; max-height:92dvh; overflow-y:auto; padding:1rem 1rem calc(env(safe-area-inset-bottom,0px) + 1rem);
+  background:var(--enamel); border:2px solid var(--enamel-line); border-bottom:0; border-radius:12px 12px 0 0;
+}
+.sheet-head{ display:flex; align-items:center; justify-content:space-between; }
+.sheet-head h2{ font:700 1.7rem/1 var(--display); }
+.sheet-actions{ display:grid; gap:.45rem; margin-top:.8rem; }
+.sheet-actions .btn{ width:100%; }
+.confirm{ margin-top:.8rem; font-weight:600; }
+.sheet .rules-box{ margin-top:1.1rem; }
+
+/* Desktop and big screens: board fills the height, controls down the side */
+@media (min-width:860px){
+  :root{ --key:clamp(1.15rem,1.95vw,2.3rem); --gap:.65rem; }
+  .game{
+    display:grid; grid-template-columns:minmax(0,1fr) clamp(20rem,26vw,25rem); grid-template-rows:minmax(0,1fr) auto;
+    gap:1rem 1.5rem; height:100dvh; padding:1.5rem;
+  }
+  .deck{ grid-column:1; grid-row:1 / span 2; min-height:0; }
+  .board{ grid-template-rows:repeat(5,minmax(0,1fr)); height:100%; }
+  .key{ min-height:0; }
+  .side{ grid-column:2; grid-row:1; overflow-y:auto; padding:3px; gap:1rem; }
+  .below{ grid-column:2; grid-row:2; }
+  .clock-row{ display:block; }
+  .clock{ font-size:clamp(6rem,10vw,8.5rem); text-align:center; }
+  .controls{ margin-top:.7rem; }
+  .topline h1{ font-size:2rem; }
+  .prompt{ font-size:2.4rem; }
+  .scrim{ align-items:center; }
+  .sheet{ border-bottom:2px solid var(--enamel-line); border-radius:12px; padding-bottom:1.25rem; }
+}
+
+/* Phone turned sideways */
+@media (orientation:landscape) and (max-height:500px) and (min-width:560px){
+  :root{ --key:clamp(.85rem,2.5vw,1.2rem); --gap:.3rem; }
+  .game{
+    display:grid; grid-template-columns:minmax(0,1fr) 16rem; grid-template-rows:minmax(0,1fr) auto; gap:.4rem .6rem; height:100dvh;
+    padding:.4rem max(.5rem,env(safe-area-inset-right,0px)) .4rem max(.5rem,env(safe-area-inset-left,0px));
+  }
+  .deck{ grid-column:1; grid-row:1 / span 2; min-height:0; }
+  .board{ grid-template-rows:repeat(5,minmax(0,1fr)); height:100%; }
+  .key{ min-height:0; box-shadow:0 3px 0 var(--ivory-lip); }
+  .side{ grid-column:2; grid-row:1 / span 2; overflow-y:auto; gap:.4rem; padding-bottom:.3rem; }
+  .below{ display:none; }
+  .panel{ padding:.45rem; }
+  .clock{ font-size:2.8rem; }
+  .controls .btn{ min-height:2.35rem; font-size:1.05rem; }
+  .keys-hint{ display:none; }
+  .prompt{ font-size:1.4rem; }
+  .secret-line strong,.answer{ font-size:1.9rem; }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .key.is-lit.ignite{ animation:none; }
+  .btn-go:active:not(:disabled),button.key:active{ transform:none; }
+}
+</style>
+</head>
+<body>
+<main id="app"></main>
+
+<script>
+"use strict";
+
+/* ---------- Word bank: edit freely. One word per slot, 10 letters at most so it fits a key. ---------- */
+const WORDS = [...new Set(`
+ACE ACID ACORN ACTOR ADMIRAL AGENT AIR ALARM ALBUM ALIEN ALLEY ALMOND ALPS AMAZON AMBER ANCHOR ANGEL ANGLE ANKLE ANT
+ANTENNA ANTLER ANVIL APE APPLE APRON ARCADE ARCH ARCTIC ARENA ARK ARM ARMOR ARROW ARTIST ASH ATHENS ATLAS ATOM ATTIC
+AUCTION AVALANCHE AXE AXIS
+BABY BACK BACON BADGE BADGER BAG BAGEL BAIT BAKER BALCONY BALL BALLET BALLOON BAMBOO BANANA BAND BANJO BANK BANNER BAR
+BARBER BARGE BARK BARN BARON BARREL BASE BASIL BASIN BASKET BAT BATH BATON BATTERY BAY BAYONET BEACH BEACON BEAD BEAK
+BEAM BEAN BEAR BEARD BEAT BEAVER BED BEE BEEF BEETLE BEIJING BELL BELT BENCH BERET BERLIN BERRY BIKE BILL BINDER
+BIRCH BIRD BISCUIT BISHOP BISON BIT BLACKOUT BLADE BLANKET BLAST BLAZE BLIMP BLINDFOLD BLIZZARD BLOCK BLOOM BLOSSOM
+BLUEPRINT BOARD BOAT BOBCAT BODY BOILER BOLT BOMB BOND BONE BONFIRE BONNET BONUS BOOK BOOM BOOT BORDER BOTTLE BOTTOM
+BOULDER BOUNTY BOW BOWL BOX BOXER BRACE BRACELET BRAID BRAIN BRAKE BRANCH BRASS BRAZIL BREAD BREEZE BRICK BRIDE BRIDGE
+BRIEF BROOM BROTH BRUSH BUBBLE BUCK BUCKET BUCKLE BUFFALO BUG BUGLE BULB BULL BULLDOZER BUMPER BUNKER BUOY BURGER
+BUTCHER BUTLER BUTTER BUTTON
+CABIN CABLE CACTUS CAIRO CAKE CALF CAMEL CAMERA CAMP CANADA CANAL CANARY CANDLE CANDY CANE CANNON CANOE CANVAS CANYON
+CAP CAPE CAPITAL CAPTAIN CAR CARAVAN CARD CARGO CARNIVAL CARPET CARROT CART CARTOON CASE CASH CASINO CASTLE CAT CATCH
+CATTLE CAVE CEILING CELERY CELL CELLAR CELLO CEMENT CENTAUR CHAIN CHAIR CHALK CHAMPION CHAPEL CHAPTER CHARGE CHARIOT
+CHARM CHART CHECK CHEDDAR CHEESE CHEF CHERRY CHESS CHEST CHICAGO CHICK CHIEF CHIMNEY CHIN CHINA CHIP CHISEL CHOCOLATE
+CHOIR CHORD CHURCH CIDER CIGAR CINEMA CIRCLE CIRCUIT CIRCUS CITY CLAM CLAMP CLASS CLAW CLAY CLERK CLIFF CLIMATE CLINIC
+CLIP CLOAK CLOCK CLOSET CLOTH CLOUD CLOVER CLOWN CLUB CLUE CLUTCH COACH COAL COAST COASTER COAT COBRA COBWEB COCKPIT
+COCOA COCONUT CODE COFFEE COFFIN COG COIL COIN COLD COLLAR COLONEL COLONY COLOSSEUM COLT COLUMN COMB COMET COMIC COMMA
+COMPASS COMPOSER COMPUTER CONCERT CONCRETE CONDOR CONDUCTOR CONE COOK COOKIE COPPER COPY CORAL CORD CORE CORK CORN
+CORNER CORSET COSTUME COTTAGE COTTON COUCH COUGAR COUNT COUPON COURT COVE COVER COW COWBOY COYOTE CRAB CRADLE CRAFT
+CRANE CRASH CRATE CRATER CRAYON CREAM CREDIT CREEK CREST CREW CRIB CRICKET CROSS CROW CROWD CROWN CRUISE CRUST
+CRYPT CRYSTAL CUBE CUCKOO CUFF CUP CUPBOARD CUPID CURE CURRENT CURRY CURTAIN CURVE CUSHION CUSTARD CYCLE CYCLONE CYMBAL
+DAGGER DAIRY DAISY DAM DANCER DART DASH DATE DAWN DEAL DECK DEED DEER DELTA DENIM DENTIST DESERT DESK DETECTIVE DEVIL
+DIAL DIAMOND DIARY DICE DIESEL DIME DINER DINGHY DINOSAUR DIPLOMA DISC DISH DITCH DIVER DOCK DOCTOR DOG DOLL DOLLAR
+DOLPHIN DOME DOMINO DONKEY DONUT DOOR DOT DOUGH DOVE DRAFT DRAGON DRAIN DRAMA DRAWER DRESS DRILL DRIVER DRONE DROP DRUM
+DRUMMER DUCHESS DUCK DUEL DUKE DUMPLING DUNE DUNGEON DUST DWARF DYNAMITE
+EAGLE EAR EARTH EASEL ECHO ECLIPSE EDGE EEL EGG EGYPT ELBOW ELEVATOR ELF ELM EMBASSY EMBER EMERALD EMPEROR EMPIRE ENGINE
+ENGLAND ENVELOPE EPISODE ERASER ERROR ESCALATOR ESPRESSO EUROPE EVEREST EXHAUST EXPRESS EYE
+FABLE FABRIC FACE FACTORY FAIR FAIRY FALCON FALL FAN FANG FARM FATHER FAUCET FAWN FEAST FEATHER FENCE FERN FERRY FESTIVAL
+FEVER FIDDLE FIELD FIG FIGHTER FIGURE FILE FILM FILTER FIN FINGER FIR FIRE FIREWORK FISH FIST FLAG FLAME FLAMINGO FLASH
+FLASK FLEA FLEECE FLEET FLIGHT FLINT FLIPPER FLOOD FLOOR FLOUR FLOWER FLUTE FLY FOAM FOG FOIL FOLD FOLDER FOOT FOOTBALL
+FORCE FOREST FORGE FORK FORT FORTRESS FORTUNE FOSSIL FOUNTAIN FOX FRAME FRANCE FREEZER FREIGHT FRIDGE FROG FROST FRUIT
+FUDGE FUEL FUNNEL FUR FURNACE FUSE
+GALAXY GALLERY GALLON GAME GARAGE GARDEN GARLIC GAS GATE GAUGE GAVEL GAZELLE GEAR GECKO GEM GENERAL GENIE GENIUS GERM
+GERMANY GEYSER GHOST GIANT GIFT GINGER GIRAFFE GLACIER GLADIATOR GLASS GLOBE GLOVE GLUE GNOME GOAL GOAT GOBLET GOBLIN
+GOLD GOLF GONDOLA GONG GOOSE GORGE GORILLA GOWN GRAIN GRAND GRANITE GRAPE GRAPH GRASS GRAVE GRAVITY GRAVY GREECE GRID
+GRILL GRIP GROOM GROUND GROVE GUARD GUITAR GULF GUM GUPPY GYM
+HAIL HAIR HALL HALO HAM HAMMER HAMMOCK HAMSTER HAND HANDLE HANGAR HARBOR HARE HARP HARVEST HAT HATCH HAWAII HAWK HAY
+HAZARD HAZEL HEAD HEADLINE HEART HEARTH HEDGE HEEL HEIR HELMET HEN HERALD HERB HERD HERMIT HERO HERON HIGHWAY HILL HINGE
+HIPPO HIVE HOCKEY HOLE HOLLY HOLLYWOOD HOOD HOOF HOOK HOOP HORN HORNET HORSE HOSE HOSPITAL HOTEL HOUND HOUR HOUSE HULL
+HUNTER HURDLE HURRICANE HUSK HUT HYDRANT
+ICE ICEBERG ICICLE ICON IGLOO IMAGE INCH INDIA INK INN INSECT IRELAND IRON ISLAND ITALY IVORY IVY
+JACK JACKAL JACKET JADE JAGUAR JAIL JAM JAPAN JAR JAVELIN JAW JAZZ JEANS JELLY JELLYFISH JERSEY JESTER JET JEWEL JIGSAW
+JOCKEY JOKER JOURNAL JUDGE JUG JUGGLER JUICE JUMPER JUNGLE JUNIPER JUPITER JURY
+KANGAROO KAYAK KEEL KENNEL KENYA KERNEL KETCHUP KETTLE KEY KEYBOARD KICK KID KILN KILT KIMONO KING KINGDOM KIOSK KITCHEN
+KITE KITTEN KIWI KNEE KNIFE KNIGHT KNOB KNOCK KNOT KOALA KRAKEN
+LAB LABEL LACE LADDER LADLE LADY LAGOON LAKE LAMB LAMP LANCE LAND LANE LANTERN LAP LAPTOP LARK LASER LASSO LATCH LAUNDRY
+LAVA LAWN LAWYER LEAD LEAF LEAGUE LEASH LEATHER LEDGE LEDGER LEECH LEG LEGEND LEMON LEMUR LENS LEOPARD LETTER LETTUCE
+LEVER LIBRARY LICENSE LID LIFE LIFT LIGHT LIGHTHOUSE LILAC LILY LIME LIMIT LIMO LINE LINEN LINER LINK LION LIP LIQUID
+LIST LITTER LIVER LIZARD LLAMA LOAF LOBBY LOBSTER LOCK LOCKER LOCUST LODGE LOFT LOG LOLLIPOP LONDON LOOM LOOP LOTUS LOUNGE
+LUCK LUGGAGE LUMBER LUNCH LUNG LYNX LYRE
+MACHINE MADRID MAGAZINE MAGIC MAGMA MAGNET MAGPIE MAID MAIL MAJOR MAMMOTH MANGO MANOR MANSION MANTIS MAP MAPLE MARATHON
+MARBLE MARCH MARKET MARS MARSH MASK MASON MAST MASTER MAT MATCH MATTRESS MAZE MEADOW MEAL MEAT MEDAL MEDIC MELODY MELON
+MEMORY MENU MERCHANT MERCURY MERMAID MESA METAL METEOR METER MEXICO MICROSCOPE MILE MILK MILL MINE MINER MINK MINOR MINT
+MINUTE MIRROR MISSILE MIST MITTEN MIXER MOAT MODEL MOLD MOLE MONARCH MONEY MONITOR MONK MONKEY MONSOON MONSTER MOON MOOSE
+MOP MORTAR MOSAIC MOSCOW MOSQUITO MOSS MOTEL MOTH MOTOR MOUNT MOUNTAIN MOUSE MOUSTACHE MOUTH MOVIE MUD MUFFIN MUG MULE
+MUMMY MURAL MUSCLE MUSEUM MUSHROOM MUSIC MUSTARD
+NAIL NAPKIN NARWHAL NAVY NECK NECKLACE NECTAR NEEDLE NEPTUNE NERVE NEST NET NETWORK NEWT NICKEL NIGHT NILE NINJA NOBLE
+NOODLE NOON NORTH NOSE NOTE NOTEBOOK NOVEL NOZZLE NUGGET NURSE NUT NUTMEG NYLON
+OAK OAR OASIS OAT OCEAN OCTOPUS OFFICE OFFICER OIL OLIVE OLYMPUS ONION OPERA ORANGE ORBIT ORCHARD ORCHESTRA ORCHID ORDER
+ORGAN ORIGAMI OSTRICH OTTER OUNCE OUTLAW OVEN OWL OXFORD OXYGEN OYSTER
+PACK PADDLE PADLOCK PAGE PAGODA PAIL PAINT PAIR PALACE PALETTE PALM PAN PANCAKE PANDA PANEL PANTHER PANTRY PAPER PARACHUTE
+PARADE PARCEL PARIS PARK PARKA PARROT PARSLEY PARTNER PARTY PASS PASSPORT PASTA PASTE PASTRY PATCH PATENT PATH PATIO PAW
+PEA PEACH PEACOCK PEAK PEANUT PEAR PEARL PEBBLE PEDAL PEEL PEG PELICAN PEN PENCIL PENDANT PENDULUM PENGUIN PENNY PEPPER
+PERCH PERFUME PERMIT PERU PET PETAL PHANTOM PHARAOH PHOENIX PHONE PHOTO PIANO PICKLE PICNIC PIE PIER PIG PIGEON PILE PILGRIM
+PILL PILLAR PILLOW PILOT PIN PINE PINEAPPLE PINT PIPE PIRATE PISTON PIT PITCH PITCHER PIZZA PLAGUE PLAIN PLAN PLANE PLANET
+PLANK PLANT PLASTER PLATE PLATFORM PLATOON PLAY PLAZA PLOT PLOW PLUG PLUM PLUMBER PLUTO POCKET POD POEM POET POINT POISON
+POKER POLE POLICE POLISH POLKA POLO POND PONY POODLE POOL POPCORN POPE POPPY PORCH PORT PORTAL PORTER PORTRAIT POST POSTER
+POT POTATO POTION POTTER POUCH POUND POWDER POWER PRAIRIE PRAWN PRESS PRETZEL PRICE PRIEST PRINCE PRINCESS PRINT PRISM
+PRISON PRIZE PROFESSOR PROJECTOR PROPELLER PROPHET PUB PUDDLE PUFFIN PULLEY PULSE PUMA PUMP PUMPKIN PUNCH PUPIL PUPPET
+PUPPY PURSE PUZZLE PYRAMID PYTHON
+QUAIL QUARRY QUARTER QUARTZ QUEEN QUEST QUEUE QUICKSAND QUILL QUILT QUIVER
+RABBIT RACCOON RACE RACK RACKET RADAR RADIO RADISH RAFT RAG RAIL RAIN RAINBOW RAISIN RAKE RAM RAMP RANCH RANGE RANGER RAT
+RATTLE RAVEN RAY RAZOR REACTOR RECEIPT RECIPE RECORD REED REEF REEL REFEREE REMOTE RESORT REVOLVER RHINO RHYTHM RIB RIBBON
+RICE RIDER RIDGE RIFLE RIG RING RINK RIOT RIVER ROAD ROBE ROBIN ROBOT ROCK ROCKET ROD RODEO ROLL ROME ROOF ROOK ROOM ROOST
+ROOT ROPE ROSE ROTOR ROUND ROUTE ROVER ROW ROYAL RUBY RUDDER RUG RUIN RULE RULER RUNWAY RUST
+SABER SACK SADDLE SAFARI SAFE SAGE SAHARA SAIL SAILOR SAINT SALAD SALE SALMON SALON SALT SAMPLE SAMURAI SAND SANDAL SANDWICH
+SAP SAPPHIRE SATELLITE SATIN SATURN SAUCE SAUCER SAUNA SAUSAGE SAVANNA SAW SCAFFOLD SCALE SCALPEL SCANNER SCARAB SCARF SCENE
+SCENT SCEPTER SCHOOL SCIENCE SCISSORS SCOOP SCOOTER SCORE SCORPION SCOTLAND SCOUT SCRAP SCREEN SCREW SCRIBE SCRIPT SCROLL
+SCUBA SCULPTOR SEA SEAGULL SEAL SEASON SEAT SEAWEED SECOND SECRET SEED SENATOR SENTRY SERPENT SERVANT SERVER SHACK SHADE
+SHADOW SHAFT SHAMPOO SHARK SHAWL SHEARS SHED SHEEP SHEET SHELF SHELL SHEPHERD SHERIFF SHIELD SHIFT SHIN SHIP SHIRT SHOE
+SHOP SHORE SHORTS SHOT SHOULDER SHOVEL SHOW SHOWER SHREW SHRIMP SHRINE SHUTTLE SHUTTER SIDE SIEVE SIGN SILK SILO SILVER
+SINK SIREN SKATE SKELETON SKETCH SKI SKIFF SKILLET SKIN SKIRT SKULL SKUNK SKY SKYLINE SLATE SLED SLEEVE SLICE SLIDE SLING
+SLIP SLIPPER SLOPE SLOT SLOTH SLUG SMOG SMOKE SNAIL SNAKE SNAP SNOW SNOWMAN SOAP SOCK SODA SOFA SOIL SOLAR SOLDIER SOLE
+SOLO SONAR SONG SOUL SOUND SOUP SOUTH SPACE SPADE SPAIN SPARK SPARROW SPATULA SPEAR SPELL SPHINX SPICE SPIDER SPIKE SPINE
+SPIRE SPIRIT SPLINTER SPOKE SPONGE SPOOL SPOON SPORT SPOT SPRING SPROUT SPRUCE SPUR SPY SQUARE SQUASH SQUID SQUIRREL STABLE
+STADIUM STAFF STAGE STAIR STAKE STALL STAMP STAND STAPLE STAR STARFISH STATION STATUE STEAK STEAM STEEL STEEPLE STEM STEP
+STEREO STERN STEW STICK STILT STING STITCH STOCK STOCKING STOMACH STONE STOOL STORE STORK STORM STORY STOVE STRAIN STRAP
+STRAW STREAM STREET STRETCHER STRIKE STRING STRIPE STUDENT STUDIO STUMP STUNT SUBMARINE SUBWAY SUGAR SUIT SUITCASE SULTAN
+SUMMIT SUN SUNDAE SUNFLOWER SUNSET SUPPER SURFER SURGEON SUSHI SWALLOW SWAMP SWAN SWARM SWEATER SWEEP SWING SWITCH SWORD
+SYDNEY SYRUP
+TABLE TABLET TACK TACO TADPOLE TAG TAIL TAILOR TALON TANGO TANK TANKER TAP TAPE TAPESTRY TAR TARGET TART TASSEL TAVERN TAX
+TAXI TEA TEACHER TEAM TEAPOT TEAR TEDDY TEETH TELESCOPE TEMPLE TENNIS TENOR TENT TERMITE TERRACE TEXAS THEATER THIMBLE THORN
+THREAD THRONE THUMB THUNDER TIARA TICK TICKET TIDE TIE TIGER TILE TILLER TIMBER TIME TIN TIP TIRE TISSUE TITAN TOAD TOAST
+TOKEN TOKYO TOLL TOMATO TOMB TONGS TONGUE TOOL TOOTH TOP TORCH TORNADO TORPEDO TORTOISE TOTEM TOUCAN TOWEL TOWER TOWN TOY
+TRACK TRACTOR TRADE TRAFFIC TRAIL TRAILER TRAIN TRAM TRAMPOLINE TRAP TRAPEZE TRAY TREASURE TREATY TREE TRENCH TRIANGLE TRIBE
+TRICK TRIDENT TRIGGER TRIM TRIP TRIPOD TROLL TROLLEY TROMBONE TROOP TROPHY TROUT TROWEL TRUCK TRUMPET TRUNK TRUST TUB TUBA
+TUBE TUG TULIP TUMBLER TUNA TUNDRA TUNE TUNIC TUNNEL TURBINE TURF TURKEY TURNIP TURTLE TUSK TUTOR TUXEDO TWIG TWIN
+TWINE TWIST TYPHOON
+UMBRELLA UMPIRE UNICORN UNIFORM UNION UNIT UNIVERSE UTOPIA
+VACUUM VALLEY VALVE VAMPIRE VAN VASE VAULT VEIL VEIN VELVET VENICE VENOM VENT VENUS VEST VET VIENNA VILLA VILLAGE VILLAIN
+VINE VINEGAR VINYL VIOLA VIOLET VIOLIN VIPER VIRUS VISA VISOR VOICE VOLCANO VOLUME VOTE VOUCHER VOYAGE VULTURE
+WAFFLE WAGON WAITER WALL WALLET WALNUT WALRUS WALTZ WAND WARDEN WAREHOUSE WARRIOR WASHER WASP WATCH WATER WATERFALL WAVE WAX
+WEASEL WEATHER WEAVER WEB WEDDING WEDGE WEED WEEK WEIGHT WELL WEREWOLF WEST WHALE WHARF WHEAT WHEEL WHIP WHISK WHISKER WHISTLE
+WHITE WICK WIDOW WIG WILLOW WINCH WIND WINDMILL WINDOW WINE WING WINTER WIRE WISH WITCH WITNESS WIZARD WOLF WOOD WOODPECKER
+WOOL WORKSHOP WORLD WORM WREATH WRECK WRENCH WRIST WRITER
+YACHT YAK YARD YARN YEAST YETI YOGURT YOLK
+ZEBRA ZENITH ZEPPELIN ZIPPER ZODIAC ZOMBIE ZONE ZOO
+`.trim().split(/\s+/))];
+
+/* ---------- State ---------- */
+const STORE = "namecodes.v1";
+const blank = () => ({
+  screen:"setup", names:["","","",""], count:3, seconds:120, muted:false, used:[],
+  players:[], round:0, phase:"roles", roles:null, board:[], target:0, clue:"", picks:[], pending:null,
+  deltas:null, timer:{ remaining:120000, endsAt:null, started:false }
+});
+let S = blank();
+try{ const saved = JSON.parse(localStorage.getItem(STORE)); if(saved) S = Object.assign(blank(), saved); }catch(e){}
+/* Never saved, so a reload can't leave a secret on screen. */
+const ui = { revealed:false, peek:null, menu:false, confirmNew:false, error:"", igniteDone:false };
+function save(){ try{ localStorage.setItem(STORE, JSON.stringify(S)); }catch(e){} }
+
+const app = document.getElementById("app");
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+const nameOf = i => esc(S.players[i].name);
+
+/* ---------- Dealing ---------- */
+function dealWords(){
+  let pool = WORDS.filter(w => !S.used.includes(w));
+  if(pool.length < 26){ S.used = []; pool = WORDS.slice(); }
+  shuffle(pool);
+  S.board = pool.slice(0,25);
+  S.clue = pool[25];
+  S.target = Math.floor(Math.random()*25);
+  S.used = S.used.concat(pool.slice(0,26));
+}
+function dealRoles(){
+  const key = r => r ? r.alice+"/"+r.bob : "";
+  const previous = key(S.roles);
+  let roles;
+  do{
+    const order = shuffle(S.players.map((_,i)=>i));
+    roles = { alice:order[0], bob:order[1], mallory:order.slice(2) };
+  }while(key(roles) === previous);   /* same deal twice in a row is no fun */
+  S.roles = roles;
+}
+function resetRound(){
+  S.picks = []; S.pending = null; S.deltas = null;
+  S.timer = { remaining:S.seconds*1000, endsAt:null, started:false };
+  ui.revealed = false; ui.peek = null; ui.igniteDone = false;
+}
+function nextRound(){
+  S.round++; dealRoles(); dealWords(); resetRound();
+  S.phase = "roles";
+}
+function redeal(){ dealWords(); resetRound(); S.phase = "alice"; }
+
+/* ---------- Timer ---------- */
+const left = () => S.timer.endsAt ? Math.max(0, S.timer.endsAt - Date.now()) : S.timer.remaining;
+function fmt(ms){ const t=Math.ceil(ms/1000); return Math.floor(t/60)+":"+String(t%60).padStart(2,"0"); }
+function startTimer(){ S.timer.endsAt = Date.now()+S.timer.remaining; S.timer.started = true; wake(true); }
+function pauseTimer(){ S.timer.remaining = left(); S.timer.endsAt = null; wake(false); }
+function toggleTimer(){ unlockAudio(); S.timer.endsAt ? pauseTimer() : startTimer(); commit(); }
+function restartTimer(){
+  unlockAudio();
+  S.phase = "timing"; S.picks = []; S.pending = null;
+  S.timer.remaining = S.seconds*1000;
+  startTimer(); commit();
+}
+function endTimer(buzz){
+  S.timer.remaining = 0; S.timer.endsAt = null; wake(false);
+  S.phase = "picks"; S.pending = null;
+  if(buzz) buzzer();
+  commit();
+}
+function tick(){
+  if(S.screen!=="game" || S.phase!=="timing") return;
+  const ms = left();
+  if(S.timer.endsAt && ms<=0){ endTimer(true); return; }
+  const el = document.getElementById("clock");
+  if(el){ el.textContent = fmt(ms); el.classList.toggle("is-low", ms<=10000); }
+}
+setInterval(tick, 200);
+
+let audio;
+function unlockAudio(){
+  try{
+    audio = audio || new (window.AudioContext||window.webkitAudioContext)();
+    if(audio.state==="suspended") audio.resume();
+  }catch(e){}
+}
+function buzzer(){
+  try{ if(navigator.vibrate) navigator.vibrate([250,120,250,120,400]); }catch(e){}
+  if(S.muted || !audio) return;
+  try{
+    [0,.32,.64].forEach(at=>{
+      const o=audio.createOscillator(), g=audio.createGain(), t=audio.currentTime+at;
+      o.type="square"; o.frequency.value=196; g.gain.value=.16;
+      g.gain.setValueAtTime(.16,t+.22); g.gain.linearRampToValueAtTime(0,t+.27);
+      o.connect(g).connect(audio.destination); o.start(t); o.stop(t+.28);
+    });
+  }catch(e){}
+}
+document.addEventListener("pointerdown", unlockAudio, {once:true});   /* so the buzzer still works after a reload */
+let lock = null;
+async function wake(on){
+  try{
+    if(on && !lock && navigator.wakeLock){ lock = await navigator.wakeLock.request("screen"); lock.addEventListener("release",()=>{lock=null;}); }
+    if(!on && lock){ await lock.release(); lock=null; }
+  }catch(e){}
+}
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="visible"){ if(S.timer.endsAt) wake(true); tick(); }
+});
+
+/* ---------- Picking and scoring ---------- */
+const pickOrder = () => S.roles.mallory.concat(S.roles.bob);
+const picker = () => pickOrder()[S.picks.length];
+function lockPick(){
+  if(S.pending===null) return;
+  S.picks.push({ player:picker(), word:S.pending });
+  S.pending = null;
+  if(S.picks.length === pickOrder().length) finishRound();
+  commit();
+}
+function finishRound(){
+  const d = S.players.map(()=>0);
+  S.picks.forEach(p=>{
+    if(p.word!==S.target) return;
+    if(p.player===S.roles.bob){ d[S.roles.alice]+=1; d[S.roles.bob]+=1; }
+    else d[p.player]+=2;
+  });
+  d.forEach((n,i)=>{ S.players[i].score+=n; });
+  S.deltas = d;
+  S.phase = "result";
+}
+
+/* ---------- Pieces of screen ---------- */
+const RULES = `<ul class="rules">
+  <li><b class="alice role-name">Alice</b> sees the target, one word on the grid, and a clue, a word that isn't on the grid.</li>
+  <li><b class="bob role-name">Bob</b> sees only the clue.</li>
+  <li><b class="mallory role-name">Mallory</b> sees neither.</li>
+  <li>Until the timer ends, Alice talks. She's trying to steer Bob to the target using the clue they share, in a way Mallory can't follow.</li>
+  <li>At time, Mallory points to a word, then Bob does.</li>
+  <li>A correct Mallory scores 2. A correct Bob scores 1 for Bob and 1 for Alice.</li>
+</ul>`;
+
+function roleOf(i){
+  if(i===S.roles.alice) return ["alice","Alice"];
+  if(i===S.roles.bob) return ["bob","Bob"];
+  return ["mallory","Mallory"];
+}
+function board(opts={}){
+  const pins = {};
+  S.picks.forEach(p=>{ (pins[p.word]=pins[p.word]||[]).push(p.player); });
+  return `<div class="board">`+S.board.map((word,i)=>{
+    const lit = opts.lit===i;
+    const pending = opts.pick && S.pending===i;
+    const c = ["key"];
+    if(lit) c.push("is-lit"); if(lit && opts.ignite) c.push("ignite");
+    if(pending) c.push("is-pending", roleOf(picker())[0]);
+    if(opts.dim && !lit) c.push("is-off");
+    const pinHtml = pins[i] ? `<span class="pins">`+pins[i].map(p=>`<span class="pin ${roleOf(p)[0]}" title="${nameOf(p)}">${esc(S.players[p].name.charAt(0).toUpperCase())}</span>`).join("")+`</span>` : "";
+    const inner = `<span class="key-word" style="--n:${word.length}">${word}</span>${pinHtml}`;
+    return opts.pick
+      ? `<button class="${c.join(" ")}" data-act="tile" data-i="${i}" aria-pressed="${pending}">${inner}</button>`
+      : `<div class="${c.join(" ")}">${inner}</div>`;
+  }).join("")+`</div>`;
+}
+function scores(){
+  const rows = S.players.map((p,i)=>({p,i})).sort((a,b)=>b.p.score-a.p.score);
+  return `<div class="panel"><table class="scores"><caption class="sr" hidden>Scores</caption>`+rows.map(({p,i})=>{
+    const [c,label] = roleOf(i);
+    const plus = S.deltas && S.deltas[i] ? `<span class="plus">+${S.deltas[i]}</span>` : "";
+    return `<tr class="${c}"><th class="who" scope="row">${esc(p.name)}</th><td class="role-cell">${label}</td><td class="pts">${plus}${p.score}</td></tr>`;
+  }).join("")+`</table></div>`;
+}
+const topline = () => `<div class="topline"><h1>Round ${S.round}</h1><button class="btn btn-small" data-act="menu">Menu</button></div>`;
+function frame(deck, side, withScores=true){
+  return `<div class="game"><div class="deck">${deck}</div><div class="side">${topline()}${side}</div>${withScores?`<div class="below">${scores()}</div>`:""}</div>`;
+}
+
+/* ---------- Screens ---------- */
+function viewSetup(){
+  const n = S.count;
+  const inputs = [...Array(n)].map((_,i)=>`<input class="name-input" data-name="${i}" value="${esc(S.names[i]||"")}" placeholder="Player ${i+1}" aria-label="Player ${i+1} name" maxlength="16" autocomplete="off" autocapitalize="words">`).join("");
+  const seg = (attr,val,cur,label) => `<button type="button" class="btn" data-act="${attr}" data-v="${val}" aria-pressed="${val===cur}">${label}</button>`;
+  return `<form class="setup" data-form="setup">
+    <h1 class="wordmark">Namecodes</h1>
+    <p class="tagline">Alice has to get a word to Bob. Mallory is listening.</p>
+    <fieldset class="field"><legend>Players</legend>
+      <div class="seg">${seg("count",3,n,"3 players")}${seg("count",4,n,"4, two Mallorys")}</div></fieldset>
+    <div class="field"><span class="field-label">Names</span>${inputs}</div>
+    <fieldset class="field"><legend>Time per round</legend>
+      <div class="seg">${[60,120,180].map(s=>seg("seconds",s,S.seconds,fmt(s*1000))).join("")}</div></fieldset>
+    ${ui.error?`<p class="error" role="alert">${esc(ui.error)}</p>`:""}
+    <button class="btn btn-go btn-wide" type="submit">Deal the first round</button>
+    <details class="rules-box" open><summary>How to play</summary>${RULES}</details>
+    <p class="fine">Everyone plays on this one device. Scores stay here if you reload the page. <a href="/">bren.place</a></p>
+  </form>`;
+}
+function viewRoles(){
+  const mals = S.roles.mallory;
+  const line = (i,c,label,know) => `<li class="${c}"><strong>${nameOf(i)}</strong><span>${label}. ${know}</span></li>`;
+  return `<div class="stage">
+    <h1 class="stage-title">Round ${S.round}</h1>
+    <ul class="cast">
+      ${line(S.roles.alice,"alice","Alice","Sees the target and the clue")}
+      ${line(S.roles.bob,"bob","Bob","Sees the clue")}
+      ${mals.map(m=>line(m,"mallory","Mallory","Sees neither")).join("")}
+    </ul>
+    <button class="btn btn-go btn-wide" data-act="to-alice" data-focus>Pass to ${nameOf(S.roles.alice)}</button>
+  </div>`;
+}
+function viewHandoff(who){
+  const i = S.roles[who], label = who==="alice"?"Alice":"Bob";
+  return `<div class="stage ${who}">
+    <h1 class="stage-title">Hand this to ${nameOf(i)}</h1>
+    <p class="stage-note">Only ${label} looks at the screen for this part.</p>
+    <button class="btn btn-go btn-wide" data-act="reveal" data-focus>I'm ${nameOf(i)}. Show me.</button>
+  </div>`;
+}
+function viewSecret(who){
+  const peeking = !!ui.peek;
+  const nextLabel = peeking ? "Hide" : who==="alice" ? `Hide and pass to ${nameOf(S.roles.bob)}` : "Hide and show the board";
+  const lines = who==="alice"
+    ? `<div class="secret-line is-target"><span>Target</span><strong>${S.board[S.target]}</strong></div>
+       <div class="secret-line"><span>Clue</span><strong>${esc(S.clue)}</strong></div>
+       <p class="panel-note">The clue isn't on the grid. Only you and Bob know it.</p>`
+    : `<div class="secret-line"><span>Clue</span><strong>${esc(S.clue)}</strong></div>
+       <p class="panel-note">Alice knows this word too. Mallory doesn't.</p>`;
+  return `<div class="game ${who}"><div class="deck">${board({lit: who==="alice"?S.target:-1})}</div>
+    <div class="side"><div class="panel">${lines}<button class="btn btn-go btn-wide" data-act="hide" data-focus>${nextLabel}</button></div></div></div>`;
+}
+function viewTiming(){
+  const ms = left(), running = !!S.timer.endsAt, started = S.timer.started;
+  const label = running ? "Pause" : started ? "Resume" : "Start timer";
+  return frame(board(), `<div class="panel">
+      <div class="clock-row">
+        <div class="clock${ms<=10000?" is-low":""}" id="clock" role="timer">${fmt(ms)}</div>
+        <div class="controls">
+          <button class="btn btn-go" data-act="toggle" data-focus>${label}</button>
+          <button class="btn btn-small" data-act="restart"${started?"":" disabled"}>Restart</button>
+          <button class="btn btn-small" data-act="end"${started?"":" disabled"}>End timer</button>
+        </div>
+      </div>
+      <p class="keys-hint">Space starts or pauses. R restarts.</p>
+    </div>`);
+}
+function viewPicks(){
+  const who = picker(), c = roleOf(who)[0], label = roleOf(who)[1];
+  const word = S.pending===null ? null : S.board[S.pending];
+  const done = S.picks.map(p=>`${nameOf(p.player)} pointed to ${S.board[p.word]}.`).join(" ");
+  return frame(board({pick:true}), `<div class="panel ${c}">
+      <p class="prompt">Time's up. <em>${nameOf(who)}</em>, point to a word.</p>
+      <p class="panel-note">${done || label+" goes first."}</p>
+      <button class="btn btn-go btn-wide" data-act="lock"${word?"":" disabled"}>${word?`Lock in ${word}`:"Tap a word"}</button>
+      <button class="btn btn-small btn-wide btn-quiet" data-act="restart">Restart timer</button>
+    </div>`);
+}
+function viewResult(){
+  const items = S.picks.map(p=>{
+    const hit = p.word===S.target, isBob = p.player===S.roles.bob;
+    const gain = !hit ? "No points." : isBob ? `<span class="gain">${nameOf(S.roles.alice)} and ${nameOf(p.player)} score 1 each.</span>` : `<span class="gain">2 points.</span>`;
+    return `<li><span class="${roleOf(p.player)[0]} role-name">${nameOf(p.player)}</span> pointed to ${S.board[p.word]}. ${gain}</li>`;
+  }).join("");
+  const ignite = !ui.igniteDone; ui.igniteDone = true;
+  return frame(board({lit:S.target, ignite, dim:true}), `<div class="panel">
+      <p class="answer">${S.board[S.target]}</p>
+      <p class="answer-note">The target. The clue was <b>${esc(S.clue)}</b>.</p>
+      <ul class="outcomes">${items}</ul>
+      <button class="btn btn-go btn-wide" data-act="next" data-focus>Next round</button>
+    </div>`);
+}
+function viewMenu(){
+  const live = S.phase==="timing" || S.phase==="picks";
+  const body = ui.confirmNew
+    ? `<p class="confirm">This clears the scores. Names stay.</p>
+       <div class="sheet-actions">
+         <button class="btn btn-go" data-act="new-yes">Start a new game</button>
+         <button class="btn" data-act="new-no">Keep playing</button>
+       </div>`
+    : `<div class="sheet-actions">
+         ${live?`<button class="btn" data-act="peek" data-who="alice">Show Alice her words again</button>
+                 <button class="btn" data-act="peek" data-who="bob">Show Bob the clue again</button>`:""}
+         ${S.phase!=="result"?`<button class="btn" data-act="redeal">Deal new words</button>`:""}
+         <button class="btn" data-act="mute">Sound: ${S.muted?"off":"on"}</button>
+         <button class="btn" data-act="new">New game</button>
+       </div>
+       <details class="rules-box"><summary>How to play</summary>${RULES}</details>`;
+  return `<div class="scrim" data-act="menu-close-bg"><div class="sheet" role="dialog" aria-modal="true" aria-label="Menu">
+    <div class="sheet-head"><h2>Menu</h2><button class="btn btn-small" data-act="menu-close" data-focus>Close</button></div>${body}</div></div>`;
+}
+
+function render(){
+  let html;
+  if(S.screen==="setup") html = viewSetup();
+  else if(ui.peek) html = ui.revealed ? viewSecret(ui.peek) : viewHandoff(ui.peek);
+  else if(S.phase==="roles") html = viewRoles();
+  else if(S.phase==="alice"||S.phase==="bob") html = ui.revealed ? viewSecret(S.phase) : viewHandoff(S.phase);
+  else if(S.phase==="timing") html = viewTiming();
+  else if(S.phase==="picks") html = viewPicks();
+  else html = viewResult();
+  if(ui.menu && S.screen==="game") html += viewMenu();
+  app.innerHTML = html;
+  const f = app.querySelector("[data-focus]");
+  if(f) f.focus({preventScroll:true});
+  window.scrollTo(0,0);
+}
+function commit(){ save(); render(); }
+
+/* ---------- Input ---------- */
+function syncNames(){ app.querySelectorAll("[data-name]").forEach(el=>{ S.names[+el.dataset.name]=el.value; }); }
+function beginGame(){
+  syncNames();
+  const names = S.names.slice(0,S.count).map((n,i)=>n.trim()||`Player ${i+1}`);
+  const seen = new Set();
+  for(const n of names){
+    const k=n.toLowerCase();
+    if(seen.has(k)){ ui.error=`Two players are named ${n}. Change one to start.`; render(); return; }
+    seen.add(k);
+  }
+  ui.error="";
+  S.players = names.map(name=>({name,score:0}));
+  S.screen="game"; S.round=0; S.roles=null;
+  nextRound(); commit();
+}
+const actions = {
+  count(el){ syncNames(); S.count=+el.dataset.v; commit(); },
+  seconds(el){ syncNames(); S.seconds=+el.dataset.v; commit(); },
+  "to-alice"(){ S.phase="alice"; ui.revealed=false; commit(); },
+  reveal(){ ui.revealed=true; render(); },
+  hide(){
+    ui.revealed=false;
+    if(ui.peek){ ui.peek=null; render(); return; }
+    if(S.phase==="alice") S.phase="bob"; else S.phase="timing";
+    commit();
+  },
+  toggle:toggleTimer,
+  restart:restartTimer,
+  end(){ endTimer(false); },
+  tile(el){ S.pending=+el.dataset.i; commit(); },
+  lock:lockPick,
+  next(){ nextRound(); commit(); },
+  menu(){ ui.menu=true; ui.confirmNew=false; render(); },
+  "menu-close"(){ ui.menu=false; render(); },
+  peek(el){ ui.menu=false; ui.peek=el.dataset.who; ui.revealed=false; render(); },
+  redeal(){ ui.menu=false; wake(false); redeal(); commit(); },
+  mute(){ S.muted=!S.muted; commit(); },
+  new(){ ui.confirmNew=true; render(); },
+  "new-no"(){ ui.confirmNew=false; ui.menu=false; render(); },
+  "new-yes"(){
+    ui.menu=false; ui.confirmNew=false; wake(false);
+    S.names = S.players.map(p=>/^Player \d$/.test(p.name)?"":p.name).concat(["","","",""]).slice(0,4);
+    S.screen="setup"; S.players=[]; S.roles=null; S.used=[];
+    commit();
+  }
+};
+app.addEventListener("click",e=>{
+  if(e.target.classList.contains("scrim")){ ui.menu=false; render(); return; }
+  const el = e.target.closest("[data-act]");
+  if(!el || el.disabled) return;
+  if(el.classList.contains("scrim")) return;
+  const fn = actions[el.dataset.act];
+  if(fn){ e.preventDefault(); fn(el); }
+});
+app.addEventListener("submit",e=>{ e.preventDefault(); beginGame(); });
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape" && ui.menu){ ui.menu=false; render(); return; }
+  if(S.screen!=="game" || S.phase!=="timing" || ui.menu || ui.peek) return;
+  if(e.metaKey||e.ctrlKey||e.altKey) return;
+  if(e.target.closest && e.target.closest("button,input,summary")){
+    if(e.key===" ") return;
+  }
+  if(e.key===" "){ e.preventDefault(); toggleTimer(); }
+  else if((e.key==="r"||e.key==="R") && S.timer.started) restartTimer();
+});
+
+render();
+</script>
+</body>
+</html>
