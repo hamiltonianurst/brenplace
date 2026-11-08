@@ -379,6 +379,15 @@ export class Room extends DurableObject {
       S.phase = "eyes1";
       this.broadcast();
     },
+    redeal(t) {
+      const S = this.S;
+      if (t !== S.host || !["eyes1", "target", "eyes2", "clue", "ready", "timing", "swarm", "bob"].includes(S.phase)) return;
+      this.dealWords();
+      S.votes = {}; S.bobPick = null; S.result = null; S.resume = null;
+      S.timer = { msLeft: S.seconds * 1000, endsAt: null, started: false };
+      S.phase = "eyes1";
+      this.broadcast();
+    },
     endSwarm(t) {
       const S = this.S;
       if (t !== S.host || S.phase !== "swarm") return;

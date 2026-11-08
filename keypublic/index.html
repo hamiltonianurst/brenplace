@@ -126,7 +126,7 @@ button.key:active{ transform:translateY(3px); box-shadow:0 1px 0 var(--ivory-lip
 .clock{ flex:0 0 auto; font:800 4.2rem/.9 var(--stencil); font-variant-numeric:tabular-nums; color:var(--lamp); }
 .clock.is-low{ color:var(--alarm); }
 .controls{ flex:1 1 auto; display:grid; grid-template-columns:1fr 1fr; gap:.4rem; min-width:0; }
-.controls .btn-go,.controls .btn-span{ grid-column:1 / -1; }
+.controls .btn-go{ grid-column:1 / -1; }
 .controls .btn-small{ padding:.2rem .25rem; }
 .prompt{ font:700 1.9rem/1.05 var(--display); overflow-wrap:anywhere; }
 .note{ margin-top:.3rem; color:var(--text-dim); }
@@ -146,6 +146,19 @@ button.key:active{ transform:translateY(3px); box-shadow:0 1px 0 var(--ivory-lip
   color:var(--key-ink); background:var(--ivory); border:2px solid var(--ivory); border-radius:6px;
 }
 .personal{ font:700 2.2rem/1 var(--display); color:var(--role); }
+
+.top-right{ display:flex; align-items:center; gap:.6rem; }
+.scrim{ position:fixed; inset:0; z-index:10; display:flex; align-items:flex-end; justify-content:center; background:rgba(16,26,23,.72); }
+.sheet{
+  width:100%; max-width:30rem; max-height:92dvh; overflow-y:auto; padding:1rem 1rem calc(env(safe-area-inset-bottom,0px) + 1rem);
+  background:var(--enamel); border:2px solid var(--enamel-line); border-bottom:0; border-radius:12px 12px 0 0;
+}
+.sheet-head{ display:flex; align-items:center; justify-content:space-between; }
+.sheet-head h2{ font:700 1.7rem/1 var(--display); }
+.sheet-actions{ display:grid; gap:.45rem; margin-top:.8rem; }
+.sheet-actions .btn{ width:100%; }
+.confirm{ margin-top:.8rem; font-weight:600; }
+.rules-box{ margin-top:1.1rem; border-top:1px solid var(--enamel-line); padding-top:1rem; }
 
 /* Host lobby */
 .lobby{ display:flex; flex-direction:column; gap:1rem; min-height:100dvh; padding:1rem; }
@@ -176,6 +189,8 @@ button.key:active{ transform:translateY(3px); box-shadow:0 1px 0 var(--ivory-lip
   .game:has(+ .phone-leave){ height:calc(100dvh - 4rem); }
   .board{ grid-template-rows:repeat(5,minmax(0,1fr)); height:100%; }
   .key{ min-height:0; }
+  .scrim{ align-items:center; }
+  .sheet{ border-bottom:2px solid var(--enamel-line); border-radius:12px; padding-bottom:1.25rem; }
   .side{ overflow-y:auto; padding:3px; gap:1rem; }
   .clock-row{ display:block; }
   .clock{ font-size:clamp(6rem,10vw,8.5rem); text-align:center; }
@@ -227,7 +242,7 @@ function tokenFor(code){
 }
 
 let V = null, ws = null, room = null, creating = false, retry = 0, retryTimer = null, pingTimer = null, clockEnd = null;
-const ui = { sel:null, confirmLeave:false, selectBob:false, num:"", toast:"", landingError:"", connLost:false, joinCode:"" };
+const ui = { sel:null, confirmLeave:false, selectBob:false, num:"", toast:"", landingError:"", connLost:false, joinCode:"", menu:false, confirmEnd:false, rulesOpen:false, muted:store.get("kp.muted")==="1" };
 
 /* ---------- Connection ---------- */
 function connect(code, create){
@@ -249,7 +264,7 @@ function connect(code, create){
     if(sock!==ws || !room) return;
     ui.connLost = true; drawConn();
     retry++;
-    retryTimer = setTimeout(()=>{ if(room) connect(room, false); }, Math.min(5000, 400*retry));
+    retryTimer = setTimeout(()=>{ if(room) connect(room, creating); }, Math.min(5000, 400*retry));
   };
   sock.onerror = () => {};
 }
@@ -266,9 +281,10 @@ function newCode(){ const L="ABCDEFGHJKMNPQRSTUVWXYZ"; let s=""; for(let i=0;i<4
 function onState(m){
   const prev = V;
   V = m;
+  creating = false;
   clockEnd = m.running ? performance.now()+m.msLeft : null;
   if(!prev || prev.phase!==m.phase){
-    ui.sel = null; ui.confirmLeave = false; ui.selectBob = false;
+    ui.sel = null; ui.confirmLeave = false; ui.selectBob = false; ui.menu = false; ui.confirmEnd = false;
     if(m.role!=="alice" && navigator.vibrate){
       if(closeEyes(m)) navigator.vibrate([300,100,300]);
       if(m.phase==="bobcall" && m.role==="bob") navigator.vibrate([200,100,200,100,600]);
@@ -288,11 +304,11 @@ function toast(msg){ ui.toast=msg; drawToast(); clearTimeout(toast.t); toast.t=s
 
 let lock=null;
 async function wake(){ try{ if(!lock && navigator.wakeLock){ lock=await navigator.wakeLock.request("screen"); lock.addEventListener("release",()=>{lock=null;}); } }catch(e){} }
-document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible" && room){ wake(); if(!ws||ws.readyState>1) connect(room,false); } });
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible" && room){ wake(); if(!ws||ws.readyState>1) connect(room,creating); } });
 let audio;
 document.addEventListener("pointerdown",()=>{ try{ audio=audio||new (window.AudioContext||window.webkitAudioContext)(); if(audio.state==="suspended") audio.resume(); }catch(e){} wake(); });
 function buzzer(){
-  if(!audio) return;
+  if(!audio || ui.muted) return;
   try{ [0,.32,.64].forEach(at=>{ const o=audio.createOscillator(), g=audio.createGain(), t=audio.currentTime+at;
     o.type="square"; o.frequency.value=196; g.gain.value=.16; g.gain.setValueAtTime(.16,t+.22); g.gain.linearRampToValueAtTime(0,t+.27);
     o.connect(g).connect(audio.destination); o.start(t); o.stop(t+.28); }); }catch(e){}
@@ -328,7 +344,9 @@ function board(o={}){
   }).join("")+`</div>`;
 }
 const frame = (deck,side) => `<div class="game"><div class="deck">${deck}</div><div class="side">${side}</div></div>`;
-function topline(right){ return `<div class="topline"><h1>Round ${V.round}</h1>${right||""}</div>`; }
+const MENU_BTN = `<button class="btn btn-small" data-act="menu">Menu</button>`;
+function topline(){ return `<div class="topline"><h1>Round ${V.round}</h1>${MENU_BTN}</div>`; }
+function phoneTop(){ return `<div class="topline"><h1>Round ${V.round}</h1><div class="top-right">${badge()}${MENU_BTN}</div></div>`; }
 function alarm(title,sub,opts={}){
   return `<div class="alarm${opts.open?" is-open":""}" role="alert"><h1>${title}</h1>${sub?`<p>${sub}</p>`:""}${opts.small?`<small>${opts.small}</small>`:""}${opts.action||""}</div>`;
 }
@@ -393,10 +411,10 @@ function viewHost(){
   if(p==="bobcall") return `<div class="stage"><h1 class="stage-title">${ROLE.mallory} ${V.bobNum}, you're the new Bob.</h1>
     <p class="stage-note">Come up to the stage.</p><button class="btn btn-go btn-wide btn-big" data-act="advance">Continue</button></div>`;
   if(p==="eyes1") return alarm("CLOSE YOUR EYES NOW",`Everyone except ${ROLE.alice}`,{action:`<button class="btn btn-big" data-act="advance">Eyes are closed. Show the target.</button>`});
-  if(p==="target") return frame(board({lit:V.target}),`<div class="panel"><div class="secret-line is-target"><span>Target</span><strong>${V.board[V.target]}</strong></div>
+  if(p==="target") return frame(board({lit:V.target}),topline()+`<div class="panel"><div class="secret-line is-target"><span>Target</span><strong>${V.board[V.target]}</strong></div>
       <p class="note">Everyone else's eyes should be closed.</p><button class="btn btn-go btn-wide" data-act="advance">Hide the target</button></div>`);
   if(p==="eyes2") return alarm("MALLORIES, KEEP YOUR EYES CLOSED",`${ROLE.bob}, open your eyes`,{action:`<button class="btn btn-big" data-act="advance">Show the clue</button>`});
-  if(p==="clue") return frame(board(),`<div class="panel"><div class="secret-line"><span>Clue</span><strong>${esc(V.clue)}</strong></div>
+  if(p==="clue") return frame(board(),topline()+`<div class="panel"><div class="secret-line"><span>Clue</span><strong>${esc(V.clue)}</strong></div>
       <p class="note">Bob has this on his phone. Mallories' eyes should be closed.</p><button class="btn btn-go btn-wide" data-act="advance">Hide the clue</button></div>`);
   if(p==="ready"||p==="timing") return hostTiming();
   if(p==="swarm") return frame(board(),topline()+`<div class="panel mallory">
@@ -425,7 +443,7 @@ function hostSetup(){
       <p class="room-code" id="room-code">${V.code}</p>
     </div>
     <div class="lobby-setup">
-      <h1 class="stage-title" style="font-size:clamp(2.6rem,5vw,4rem)">${ROLE.alice}</h1>
+      <div class="topline"><span class="stage-title" style="font-size:clamp(2.6rem,5vw,4rem)">${ROLE.alice}</span>${MENU_BTN}</div>
       <div class="panel bob">
         <div class="stat-line"><span>${ROLE.bob}</span><strong>${V.bobOpen?"Open":"Claimed"}</strong></div>
         ${V.bobOpen?"":`<button class="btn btn-small" data-act="releaseBob">Release Bob</button>`}
@@ -456,7 +474,6 @@ function hostTiming(){
         <button class="btn btn-go" data-act="timerToggle">${label}</button>
         <button class="btn btn-small" data-act="timerRestart"${V.started?"":" disabled"}>Restart</button>
         <button class="btn btn-small" data-act="timerEnd"${V.started?"":" disabled"}>End timer</button>
-        <button class="btn btn-small btn-span" data-act="resecret">Close eyes and show secrets again</button>
       </div>
     </div></div>`);
 }
@@ -471,8 +488,7 @@ function nextControls(){
     ${ui.selectBob?`<form class="row" data-form="selectBob" style="margin-top:.5rem">
        <input class="num-input" id="bob-num" inputmode="numeric" pattern="[0-9]*" placeholder="Mallory number" aria-label="Mallory number" value="${esc(ui.num)}">
        <button class="btn btn-small" type="submit">Make Bob</button></form>
-       <p class="note">In the game: ${nums(sw)}</p>`:""}
-    <button class="btn btn-small btn-wide" data-act="endGame">End the game</button>`;
+       <p class="note">In the game: ${nums(sw)}</p>`:""}`;
 }
 
 /* ---------- Bob and the swarm, on phones ---------- */
@@ -498,28 +514,28 @@ function viewPhone(){
   }
   if(p==="ready"||p==="timing"){
     const ms=left();
-    return frame(board(),`<div class="topline"><h1>Round ${V.round}</h1>${badge()}</div>
+    return frame(board(),`${phoneTop()}
       ${role==="bob"?`<div class="panel"><div class="secret-line"><span>Clue</span><strong>${esc(V.clue)}</strong></div></div>`:""}
       <div class="panel">${p==="ready"?`<p class="prompt">Open your eyes.</p>`:""}<div class="clock${ms<=10000?" is-low":""}" id="clock" role="timer">${fmt(ms)}</div></div>`)+phoneLeave();
   }
   if(p==="swarm"){
-    if(role==="bob") return frame(board(),`<div class="topline"><h1>Round ${V.round}</h1>${badge()}</div>
+    if(role==="bob") return frame(board(),`${phoneTop()}
       <div class="panel"><div class="secret-line"><span>Clue</span><strong>${esc(V.clue)}</strong></div><p class="note">The swarm is voting. You'll see every vote before you guess.</p></div>`);
-    if(V.myVote!==null) return frame(board({lit:-1}),`<div class="topline"><h1>Round ${V.round}</h1>${badge()}</div>
+    if(V.myVote!==null) return frame(board({lit:-1}),`${phoneTop()}
       <div class="panel"><p class="prompt">Locked in: ${V.board[V.myVote]}</p><p class="note">Waiting for the rest of the swarm.</p></div>`)+phoneLeave();
     const w=ui.sel===null?null:V.board[ui.sel];
-    return frame(board({pick:true}),`<div class="topline"><h1>Round ${V.round}</h1>${badge()}</div>
+    return frame(board({pick:true}),`${phoneTop()}
       <div class="panel mallory"><p class="prompt">Time's up. Point to a word.</p><p class="note">Nobody sees the votes until the whole swarm is locked in.</p>
       <button class="btn btn-go btn-wide" data-act="lock-vote"${w?"":" disabled"}>${w?`Lock in ${w}`:"Tap a word"}</button></div>`)+phoneLeave();
   }
   if(p==="bob"){
     if(role==="bob"){
       const w=ui.sel===null?null:V.board[ui.sel];
-      return frame(board({pick:true,tally:V.tally,cls:"bob"}),`<div class="topline"><h1>Round ${V.round}</h1>${badge()}</div>
+      return frame(board({pick:true,tally:V.tally,cls:"bob"}),`${phoneTop()}
         <div class="panel bob"><div class="secret-line"><span>Clue</span><strong>${esc(V.clue)}</strong></div><p class="prompt" style="margin-top:.4rem">Your guess. The numbers are the swarm's votes.</p>
         <button class="btn btn-go btn-wide" data-act="lock-bob"${w?"":" disabled"}>${w?`Lock in ${w}`:"Tap a word"}</button></div>`);
     }
-    return frame(board({tally:V.tally}),`<div class="topline"><h1>Round ${V.round}</h1>${badge()}</div>
+    return frame(board({tally:V.tally}),`${phoneTop()}
       <div class="panel bob"><p class="prompt">${ROLE.bob} is choosing.</p>${V.myVote===null?"":`<p class="note">You picked ${V.board[V.myVote]}.</p>`}</div>`)+phoneLeave();
   }
   if(p==="result"){
@@ -527,7 +543,7 @@ function viewPhone(){
     let you;
     if(role==="bob") you = r.bobRight&&!r.foiled ? "You win." : r.bobRight ? "You found it, but you were foiled." : "You missed it.";
     else you = V.intercepted ? "You intercepted it. You win." : V.myVote===null ? "You didn't vote." : "You missed it.";
-    return frame(board({lit:r.target,tally:V.tally,mark:r.bobPick}),`<div class="topline"><h1>Round ${V.round}</h1>${badge()}</div>
+    return frame(board({lit:r.target,tally:V.tally,mark:r.bobPick}),`${phoneTop()}
       <div class="panel ${role}"><p class="personal">${you}</p><hr class="rule">${resultBlock(r)}</div>`)+phoneLeave();
   }
   return viewOver();
@@ -544,12 +560,32 @@ function viewOver(){
   return `<div class="stage"><h1 class="stage-title">Game over</h1><p class="stage-note">Thanks for playing.</p><a class="btn btn-wide" href="${location.pathname}">Back to the start</a></div>`;
 }
 
+/* ---------- Menu ---------- */
+function viewMenu(){
+  const rules = `<details class="rules-box"${ui.rulesOpen?" open":""}><summary>How to play</summary>${RULES}</details>`;
+  const head = `<div class="sheet-head"><h2>Menu</h2><button class="btn btn-small" data-act="menu-close">Close</button></div>`;
+  let body;
+  if(V.role!=="alice") body = rules;
+  else if(ui.confirmEnd) body = `<p class="confirm">This ends the game for everyone.</p>
+    <div class="sheet-actions"><button class="btn btn-go" data-act="endGame">End the game</button><button class="btn" data-act="end-no">Keep playing</button></div>`;
+  else{
+    const p = V.phase;
+    body = `<div class="sheet-actions">
+      ${p==="ready"||p==="timing"?`<button class="btn" data-act="resecret">Close eyes and show secrets again</button>`:""}
+      ${["eyes1","target","eyes2","clue","ready","timing","swarm","bob"].includes(p)?`<button class="btn" data-act="redeal">Deal new words</button>`:""}
+      <button class="btn" data-act="mute">Sound: ${ui.muted?"off":"on"}</button>
+      <button class="btn" data-act="end-ask">End the game</button>
+    </div>${rules}`;
+  }
+  return `<div class="scrim"><div class="sheet" role="dialog" aria-modal="true" aria-label="Menu">${head}${body}</div></div>`;
+}
+
 /* ---------- Rendering ---------- */
 function drawToast(){ let el=document.getElementById("toast"); if(ui.toast){ if(!el){ el=document.createElement("div"); el.id="toast"; el.className="toast"; el.setAttribute("role","status"); document.body.appendChild(el);} el.textContent=ui.toast; } else if(el) el.remove(); }
 function drawConn(){ let el=document.getElementById("conn"); if(ui.connLost){ if(!el){ el=document.createElement("div"); el.id="conn"; el.className="conn"; el.setAttribute("role","status"); el.textContent="Reconnecting…"; document.body.appendChild(el);} } else if(el) el.remove(); }
 function render(){
   const focused = document.activeElement && document.activeElement.id;
-  app.innerHTML = !V ? (room ? `<div class="stage"><p class="stage-note">Connecting…</p></div>` : viewLanding()) : V.role==="alice" ? viewHost() : viewPhone();
+  app.innerHTML = !V ? (room ? `<div class="stage"><p class="stage-note">Connecting…</p></div>` : viewLanding()) : (V.role==="alice" ? viewHost() : viewPhone()) + (ui.menu ? viewMenu() : "");
   if(focused==="bob-num"){ const el=document.getElementById("bob-num"); if(el){ el.focus(); el.setSelectionRange(el.value.length,el.value.length); } }
   else if(ui.selectBob){ const el=document.getElementById("bob-num"); if(el) el.focus({preventScroll:true}); }
 }
@@ -568,7 +604,13 @@ const actions = {
   timerToggle(){ send({a:"timerToggle"}); },
   timerRestart(){ send({a:"timerRestart"}); },
   timerEnd(){ send({a:"timerEnd"}); },
-  resecret(){ send({a:"resecret"}); },
+  resecret(){ ui.menu=false; send({a:"resecret"}); },
+  redeal(){ ui.menu=false; send({a:"redeal"}); render(); },
+  menu(){ ui.menu=true; ui.confirmEnd=false; render(); },
+  "menu-close"(){ ui.menu=false; render(); },
+  mute(){ ui.muted=!ui.muted; store.set("kp.muted",ui.muted?"1":"0"); render(); },
+  "end-ask"(){ ui.confirmEnd=true; render(); },
+  "end-no"(){ ui.confirmEnd=false; render(); },
   endSwarm(){ send({a:"endSwarm"}); },
   endBob(){ send({a:"endBob"}); },
   endGame(){ send({a:"endGame"}); },
@@ -578,7 +620,9 @@ const actions = {
   "lock-vote"(){ if(ui.sel!==null) send({a:"vote",i:ui.sel}); },
   "lock-bob"(){ if(ui.sel!==null) send({a:"bobPick",i:ui.sel}); },
 };
+app.addEventListener("toggle",e=>{ if(e.target.matches(".rules-box")) ui.rulesOpen=e.target.open; },true);
 app.addEventListener("click",e=>{
+  if(e.target.classList.contains("scrim")){ ui.menu=false; render(); return; }
   const el=e.target.closest("[data-act]");
   if(!el||el.disabled) return;
   const fn=actions[el.dataset.act];
@@ -600,6 +644,8 @@ app.addEventListener("submit",e=>{
   }
 });
 document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"&&ui.menu){ ui.menu=false; render(); return; }
+  if(ui.menu) return;
   if(!V||V.role!=="alice"||!["ready","timing"].includes(V.phase)) return;
   if(e.target.closest&&e.target.closest("input")) return;
   if(e.key===" "&&!(e.target.closest&&e.target.closest("button"))){ e.preventDefault(); send({a:"timerToggle"}); }
