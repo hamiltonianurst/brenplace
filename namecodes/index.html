@@ -69,13 +69,9 @@ a{ color:var(--text); text-underline-offset:3px; }
 .seg{ display:grid; grid-auto-flow:column; grid-auto-columns:1fr; gap:.4rem; }
 .seg .btn{ font-size:1.2rem; }
 .seg .btn[aria-pressed="true"]{ color:var(--key-ink); background:var(--ivory); border-color:var(--ivory); }
-.name-input{
-  display:block; width:100%; min-height:3rem; margin-bottom:.45rem; padding:.3rem .8rem; font-size:1.125rem;
-  color:var(--key-ink); background:var(--ivory); border:2px solid var(--ivory); border-radius:6px;
-}
-.name-input::placeholder{ color:#6d705f; }
-.error{ margin-top:1rem; color:var(--mallory); font-weight:600; }
+.animals{ font-size:clamp(2.6rem,12vw,3.5rem); line-height:1.15; letter-spacing:.08em; }
 .setup .btn-go{ margin-top:1.6rem; }
+.credit{ margin-top:.5rem; }
 .rules-box{ margin-top:2rem; border-top:1px solid var(--enamel-line); padding-top:1rem; }
 .rules-box summary{ cursor:pointer; font-weight:600; }
 .rules{ margin:.7rem 0 0; padding:0; list-style:none; }
@@ -100,7 +96,7 @@ a{ color:var(--text); text-underline-offset:3px; }
 .stage .btn-quiet{ margin-top:.6rem; }
 .cast{ margin:1.5rem 0 0; padding:0; list-style:none; }
 .cast li{ padding:.7rem 0; border-top:1px solid var(--enamel-line); }
-.cast strong{ display:block; font:700 2rem/1.05 var(--display); color:var(--role); overflow-wrap:anywhere; }
+.cast strong{ display:block; font:700 2.6rem/1.1 var(--display); color:var(--role); overflow-wrap:anywhere; }
 .cast span{ color:var(--text-dim); }
 
 /* The machine */
@@ -137,8 +133,8 @@ button.key:active{ transform:translateY(3px); box-shadow:0 1px 0 var(--ivory-lip
 }
 .pins{ position:absolute; top:-5px; right:-3px; display:flex; gap:2px; z-index:2; }
 .pin{
-  display:grid; place-items:center; width:1.35rem; height:1.35rem; border-radius:50%;
-  font:600 .8rem/1 var(--body); color:var(--key-ink); background:var(--role); border:2px solid var(--enamel-deep);
+  display:grid; place-items:center; width:1.6rem; height:1.6rem; border-radius:50%;
+  font:600 .95rem/1 var(--body); color:var(--key-ink); background:var(--role); border:2px solid var(--enamel-deep);
 }
 
 .panel{ padding:.75rem; background:var(--enamel-deep); border:2px solid var(--enamel-line); border-radius:8px; }
@@ -172,7 +168,7 @@ button.key:active{ transform:translateY(3px); box-shadow:0 1px 0 var(--ivory-lip
 .scores{ width:100%; border-collapse:collapse; }
 .scores th,.scores td{ padding:.32rem 0; border-top:1px solid var(--enamel-line); font-weight:400; text-align:left; }
 .scores tr:first-child th,.scores tr:first-child td{ border-top:0; }
-.scores .who{ font-weight:600; overflow-wrap:anywhere; }
+.scores .who{ font-size:1.4rem; line-height:1.1; font-weight:600; overflow-wrap:anywhere; }
 .scores .role-cell{ padding:0 .5rem; color:var(--role); white-space:nowrap; }
 .scores .pts{ width:3.6rem; font:700 1.5rem/1 var(--display); text-align:right; white-space:nowrap; }
 .scores .plus{ font:600 1rem/1 var(--body); color:var(--lamp); margin-right:.3rem; }
@@ -357,15 +353,18 @@ ZEBRA ZENITH ZEPPELIN ZIPPER ZODIAC ZOMBIE ZONE ZOO
 
 /* ---------- State ---------- */
 const STORE = "namecodes.v1";
+const ROLE = { alice:"\u{1F4E1} Alice", bob:"\u{1F4FB} Bob", mallory:"\u{1F608} Mallory" };
+const ANIMALS = ["\u{1F98A}","\u{1F989}","\u{1F438}","\u{1F419}","\u{1F422}","\u{1F981}","\u{1F43C}","\u{1F41D}","\u{1F980}","\u{1F427}","\u{1F430}","\u{1F984}"];
+function pickAnimals(){ return shuffle(ANIMALS.slice()).slice(0,4); }
 const blank = () => ({
-  screen:"setup", names:["","","",""], count:3, seconds:120, muted:false, used:[],
+  screen:"setup", animals:pickAnimals(), count:3, seconds:120, muted:false, used:[],
   players:[], round:0, phase:"roles", roles:null, board:[], target:0, clue:"", picks:[], pending:null,
   deltas:null, timer:{ remaining:120000, endsAt:null, started:false }
 });
 let S = blank();
 try{ const saved = JSON.parse(localStorage.getItem(STORE)); if(saved) S = Object.assign(blank(), saved); }catch(e){}
 /* Never saved, so a reload can't leave a secret on screen. */
-const ui = { revealed:false, peek:null, menu:false, confirmNew:false, error:"", igniteDone:false };
+const ui = { revealed:false, peek:null, menu:false, confirmNew:false, igniteDone:false };
 function save(){ try{ localStorage.setItem(STORE, JSON.stringify(S)); }catch(e){} }
 
 const app = document.getElementById("app");
@@ -486,18 +485,19 @@ function finishRound(){
 
 /* ---------- Pieces of screen ---------- */
 const RULES = `<ul class="rules">
-  <li><b class="alice role-name">Alice</b> sees the target, one word on the grid, and a clue, a word that isn't on the grid.</li>
-  <li><b class="bob role-name">Bob</b> sees only the clue.</li>
-  <li><b class="mallory role-name">Mallory</b> sees neither.</li>
+  <li><b class="alice role-name">${ROLE.alice}</b> sees the target, one word on the grid, and a clue, a word that isn't on the grid.</li>
+  <li><b class="bob role-name">${ROLE.bob}</b> sees only the clue.</li>
+  <li><b class="mallory role-name">${ROLE.mallory}</b> sees neither.</li>
   <li>Until the timer ends, Alice talks. She's trying to steer Bob to the target using the clue they share, in a way Mallory can't follow.</li>
+  <li>Bob can talk during the timer too, if it helps.</li>
   <li>At time, Mallory points to a word, then Bob does.</li>
   <li>A correct Mallory scores 2. A correct Bob scores 1 for Bob and 1 for Alice.</li>
 </ul>`;
 
 function roleOf(i){
-  if(i===S.roles.alice) return ["alice","Alice"];
-  if(i===S.roles.bob) return ["bob","Bob"];
-  return ["mallory","Mallory"];
+  if(i===S.roles.alice) return ["alice",ROLE.alice];
+  if(i===S.roles.bob) return ["bob",ROLE.bob];
+  return ["mallory",ROLE.mallory];
 }
 function board(opts={}){
   const pins = {};
@@ -509,7 +509,7 @@ function board(opts={}){
     if(lit) c.push("is-lit"); if(lit && opts.ignite) c.push("ignite");
     if(pending) c.push("is-pending", roleOf(picker())[0]);
     if(opts.dim && !lit) c.push("is-off");
-    const pinHtml = pins[i] ? `<span class="pins">`+pins[i].map(p=>`<span class="pin ${roleOf(p)[0]}" title="${nameOf(p)}">${esc(S.players[p].name.charAt(0).toUpperCase())}</span>`).join("")+`</span>` : "";
+    const pinHtml = pins[i] ? `<span class="pins">`+pins[i].map(p=>`<span class="pin ${roleOf(p)[0]}" title="${nameOf(p)}">${esc(Array.from(S.players[p].name)[0])}</span>`).join("")+`</span>` : "";
     const inner = `<span class="key-word" style="--n:${word.length}">${word}</span>${pinHtml}`;
     return opts.pick
       ? `<button class="${c.join(" ")}" data-act="tile" data-i="${i}" aria-pressed="${pending}">${inner}</button>`
@@ -532,20 +532,20 @@ function frame(deck, side, withScores=true){
 /* ---------- Screens ---------- */
 function viewSetup(){
   const n = S.count;
-  const inputs = [...Array(n)].map((_,i)=>`<input class="name-input" data-name="${i}" value="${esc(S.names[i]||"")}" placeholder="Player ${i+1}" aria-label="Player ${i+1} name" maxlength="16" autocomplete="off" autocapitalize="words">`).join("");
   const seg = (attr,val,cur,label) => `<button type="button" class="btn" data-act="${attr}" data-v="${val}" aria-pressed="${val===cur}">${label}</button>`;
   return `<form class="setup" data-form="setup">
     <h1 class="wordmark">Namecodes</h1>
     <p class="tagline">Alice has to get a word to Bob. Mallory is listening.</p>
     <fieldset class="field"><legend>Players</legend>
       <div class="seg">${seg("count",3,n,"3 players")}${seg("count",4,n,"4, two Mallorys")}</div></fieldset>
-    <div class="field"><span class="field-label">Names</span>${inputs}</div>
+    <div class="field"><span class="field-label">Each player claims an animal for the whole game</span>
+      <p class="animals">${S.animals.slice(0,n).join(" ")}</p></div>
     <fieldset class="field"><legend>Time per round</legend>
       <div class="seg">${[60,120,180].map(s=>seg("seconds",s,S.seconds,fmt(s*1000))).join("")}</div></fieldset>
-    ${ui.error?`<p class="error" role="alert">${esc(ui.error)}</p>`:""}
     <button class="btn btn-go btn-wide" type="submit">Deal the first round</button>
     <details class="rules-box" open><summary>How to play</summary>${RULES}</details>
     <p class="fine">Everyone plays on this one device. Scores stay here if you reload the page. <a href="/">bren.place</a></p>
+    <p class="fine credit">Taught to me by Ben K at 4am 11/8/2026</p>
   </form>`;
 }
 function viewRoles(){
@@ -554,15 +554,15 @@ function viewRoles(){
   return `<div class="stage">
     <h1 class="stage-title">Round ${S.round}</h1>
     <ul class="cast">
-      ${line(S.roles.alice,"alice","Alice","Sees the target and the clue")}
-      ${line(S.roles.bob,"bob","Bob","Sees the clue")}
-      ${mals.map(m=>line(m,"mallory","Mallory","Sees neither")).join("")}
+      ${line(S.roles.alice,"alice",ROLE.alice,"Sees the target and the clue")}
+      ${line(S.roles.bob,"bob",ROLE.bob,"Sees the clue")}
+      ${mals.map(m=>line(m,"mallory",ROLE.mallory,"Sees neither")).join("")}
     </ul>
     <button class="btn btn-go btn-wide" data-act="to-alice" data-focus>Pass to ${nameOf(S.roles.alice)}</button>
   </div>`;
 }
 function viewHandoff(who){
-  const i = S.roles[who], label = who==="alice"?"Alice":"Bob";
+  const i = S.roles[who], label = ROLE[who];
   return `<div class="stage ${who}">
     <h1 class="stage-title">Hand this to ${nameOf(i)}</h1>
     <p class="stage-note">Only ${label} looks at the screen for this part.</p>
@@ -659,24 +659,14 @@ function render(){
 function commit(){ save(); render(); }
 
 /* ---------- Input ---------- */
-function syncNames(){ app.querySelectorAll("[data-name]").forEach(el=>{ S.names[+el.dataset.name]=el.value; }); }
 function beginGame(){
-  syncNames();
-  const names = S.names.slice(0,S.count).map((n,i)=>n.trim()||`Player ${i+1}`);
-  const seen = new Set();
-  for(const n of names){
-    const k=n.toLowerCase();
-    if(seen.has(k)){ ui.error=`Two players are named ${n}. Change one to start.`; render(); return; }
-    seen.add(k);
-  }
-  ui.error="";
-  S.players = names.map(name=>({name,score:0}));
+  S.players = S.animals.slice(0,S.count).map(name=>({name,score:0}));
   S.screen="game"; S.round=0; S.roles=null;
   nextRound(); commit();
 }
 const actions = {
-  count(el){ syncNames(); S.count=+el.dataset.v; commit(); },
-  seconds(el){ syncNames(); S.seconds=+el.dataset.v; commit(); },
+  count(el){ S.count=+el.dataset.v; commit(); },
+  seconds(el){ S.seconds=+el.dataset.v; commit(); },
   "to-alice"(){ S.phase="alice"; ui.revealed=false; commit(); },
   reveal(){ ui.revealed=true; render(); },
   hide(){
@@ -700,7 +690,7 @@ const actions = {
   "new-no"(){ ui.confirmNew=false; ui.menu=false; render(); },
   "new-yes"(){
     ui.menu=false; ui.confirmNew=false; wake(false);
-    S.names = S.players.map(p=>/^Player \d$/.test(p.name)?"":p.name).concat(["","","",""]).slice(0,4);
+    S.animals = pickAnimals();
     S.screen="setup"; S.players=[]; S.roles=null; S.used=[];
     commit();
   }
