@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Keyprivate</title>
+<title>KeyPrivate</title>
 <meta name="description" content="Alice has to get a word to Bob while Mallory listens. A pass-the-device word game for 3 or 4 players.">
 <meta name="theme-color" content="#2f4842">
 <meta name="color-scheme" content="dark">
@@ -535,7 +535,7 @@ function viewSetup(){
   const n = S.count;
   const seg = (attr,val,cur,label) => `<button type="button" class="btn" data-act="${attr}" data-v="${val}" aria-pressed="${val===cur}">${label}</button>`;
   return `<form class="setup" data-form="setup">
-    <h1 class="wordmark">Keyprivate</h1>
+    <h1 class="wordmark">KeyPrivate</h1>
     <p class="tagline">Alice has to get a word to Bob. Mallory is listening.</p>
     <fieldset class="field"><legend>Players</legend>
       <div class="seg">${seg("count",3,n,"3 players")}${seg("count",4,n,"4, two Mallorys")}</div>

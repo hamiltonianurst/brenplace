@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Keypublic</title>
+<title>KeyPublic</title>
 <meta name="description" content="Alice has to get a word to Bob while the whole room listens. A live word game for a crowd.">
 <meta name="theme-color" content="#2f4842">
 <meta name="color-scheme" content="dark">
@@ -389,7 +389,7 @@ function resultBlock(r){
 /* ---------- Landing ---------- */
 function viewLanding(){
   return `<div class="stage">
-    <h1 class="wordmark">Keypublic</h1>
+    <h1 class="wordmark">KeyPublic</h1>
     <p class="tagline">Alice has to get a word to Bob. The whole room is listening.</p>
     <button class="btn btn-go btn-wide btn-big" data-act="claim-alice">Claim Alice</button>
     <p class="fine">For the host. Your screen becomes the board the room can see.</p>
@@ -550,7 +550,7 @@ function viewPhone(){
 }
 function phoneLeave(){ return V.role==="mallory" ? `<div class="phone-leave">${leaveControl()}</div>` : ""; }
 function viewJoin(){
-  return `<div class="stage"><h1 class="wordmark" style="font-size:clamp(3rem,15vw,5rem)">Keypublic</h1>
+  return `<div class="stage"><h1 class="wordmark" style="font-size:clamp(3rem,15vw,5rem)">KeyPublic</h1>
     <p class="stage-note">Game ${esc(V.code)}. Choose your side.</p>
     ${V.bobOpen?`<button class="btn btn-bob btn-wide btn-big" data-act="claimBob">Claim Bob</button>`:""}
     <button class="btn btn-swarm btn-wide btn-big" data-act="joinSwarm">Join the Mallory Swarm</button>

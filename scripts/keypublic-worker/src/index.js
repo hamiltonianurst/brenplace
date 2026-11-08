@@ -1,4 +1,4 @@
-/* Keypublic game server. One Durable Object per room; every phone holds a WebSocket to it.
+/* KeyPublic game server. One Durable Object per room; every phone holds a WebSocket to it.
    The server owns the game. Each connection is only ever sent what its role may see. */
 import { DurableObject } from "cloudflare:workers";
 import { WORDS } from "./words.js";

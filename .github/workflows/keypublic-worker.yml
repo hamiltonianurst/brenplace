@@ -1,4 +1,4 @@
-name: Deploy Keypublic game server
+name: Deploy KeyPublic game server
 
 on:
   push:
@@ -28,4 +28,4 @@ jobs:
           wranglerVersion: "4.158.0"
       - name: Explain the skip
         if: env.HAS_TOKEN != 'true'
-        run: echo "CLOUDFLARE_API_TOKEN isn't set, so the Keypublic server was not deployed."
+        run: echo "CLOUDFLARE_API_TOKEN isn't set, so the KeyPublic server was not deployed."
