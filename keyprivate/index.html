@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Namecodes</title>
+<title>Keyprivate</title>
 <meta name="description" content="Alice has to get a word to Bob while Mallory listens. A pass-the-device word game for 3 or 4 players.">
 <meta name="theme-color" content="#2f4842">
 <meta name="color-scheme" content="dark">
@@ -353,7 +353,7 @@ ZEBRA ZENITH ZEPPELIN ZIPPER ZODIAC ZOMBIE ZONE ZOO
 `.trim().split(/\s+/))];
 
 /* ---------- State ---------- */
-const STORE = "namecodes.v1";
+const STORE = "keyprivate.v1";
 const ROLE = { alice:"\u{1F4E1} Alice", bob:"\u{1F4FB} Bob", mallory:"\u{1F608} Mallory" };
 const ANIMALS = ["\u{1F98A}","\u{1F989}","\u{1F438}","\u{1F419}","\u{1F422}","\u{1F981}","\u{1F43C}","\u{1F41D}","\u{1F980}","\u{1F427}","\u{1F430}","\u{1F984}"];
 function pickAnimals(){ return shuffle(ANIMALS.slice()).slice(0,4); }
@@ -535,7 +535,7 @@ function viewSetup(){
   const n = S.count;
   const seg = (attr,val,cur,label) => `<button type="button" class="btn" data-act="${attr}" data-v="${val}" aria-pressed="${val===cur}">${label}</button>`;
   return `<form class="setup" data-form="setup">
-    <h1 class="wordmark">Namecodes</h1>
+    <h1 class="wordmark">Keyprivate</h1>
     <p class="tagline">Alice has to get a word to Bob. Mallory is listening.</p>
     <fieldset class="field"><legend>Players</legend>
       <div class="seg">${seg("count",3,n,"3 players")}${seg("count",4,n,"4, two Mallorys")}</div>

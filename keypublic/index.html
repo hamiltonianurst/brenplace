@@ -8,10 +8,10 @@
 <meta name="theme-color" content="#2f4842">
 <meta name="color-scheme" content="dark">
 <style>
-@font-face{ font-family:"Big Shoulders"; src:url(../namecodes/fonts/big-shoulders-display-latin-700-normal.woff2) format("woff2"); font-weight:700; font-display:swap; }
-@font-face{ font-family:"Big Shoulders Stencil"; src:url(../namecodes/fonts/big-shoulders-stencil-display-latin-800-normal.woff2) format("woff2"); font-weight:800; font-display:swap; }
-@font-face{ font-family:"Barlow"; src:url(../namecodes/fonts/barlow-latin-400-normal.woff2) format("woff2"); font-weight:400; font-display:swap; }
-@font-face{ font-family:"Barlow"; src:url(../namecodes/fonts/barlow-latin-600-normal.woff2) format("woff2"); font-weight:600; font-display:swap; }
+@font-face{ font-family:"Big Shoulders"; src:url(../keyprivate/fonts/big-shoulders-display-latin-700-normal.woff2) format("woff2"); font-weight:700; font-display:swap; }
+@font-face{ font-family:"Big Shoulders Stencil"; src:url(../keyprivate/fonts/big-shoulders-stencil-display-latin-800-normal.woff2) format("woff2"); font-weight:800; font-display:swap; }
+@font-face{ font-family:"Barlow"; src:url(../keyprivate/fonts/barlow-latin-400-normal.woff2) format("woff2"); font-weight:400; font-display:swap; }
+@font-face{ font-family:"Barlow"; src:url(../keyprivate/fonts/barlow-latin-600-normal.woff2) format("woff2"); font-weight:600; font-display:swap; }
 
 :root{
   --enamel:#2f4842; --enamel-deep:#22352f; --enamel-line:#49655d;
@@ -328,7 +328,7 @@ const RULES = `<ul class="rules">
   <li>At time, the whole swarm votes in secret. Then Bob sees every vote and makes his guess.</li>
   <li>Bob finding the target wins it for Alice and Bob, unless enough Mallories got there too. Every Mallory who intercepted it also wins.</li>
 </ul>`;
-const FRIENDS = `<p class="fine">Playing among friends? <a href="../namecodes/">Click here</a></p>`;
+const FRIENDS = `<p class="fine">Playing among friends? <a href="../keyprivate/">Click here</a></p>`;
 
 function board(o={}){
   const t = o.tally, max = t ? Math.max(1,...t) : 1;
