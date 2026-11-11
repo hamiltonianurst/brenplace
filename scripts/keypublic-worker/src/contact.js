@@ -53,19 +53,34 @@ export async function handleContact(req, env) {
   if (allowed === "ip") return reply(429, { ok: false, error: "That's a lot of messages. Try again in an hour." });
   if (allowed === "day") return reply(429, { ok: false, error: "The form is busy today. Try again tomorrow." });
 
+  const errInfo = e => ({
+    code: String((e && e.code) || (e && e.name) || "unknown").slice(0, 60),
+    detail: String((e && e.message) || "").slice(0, 200),
+  });
+  const send = (dest, subject, note) => env.EMAIL.send({
+    to: dest.email,
+    from: FROM,
+    replyTo: { email, name },
+    subject,
+    text: `${note}${message}\n\n---\nFrom: ${name} <${email}>\nTopic: ${to.label}\nSent with the contact form at bren.place/contact. Reply to this email to answer them.`,
+  });
+
   try {
-    await env.EMAIL.send({
-      to: to.email,
-      from: FROM,
-      replyTo: { email, name },
-      subject: `[${to.label}] Message from ${name}`,
-      text: `${message}\n\n---\nFrom: ${name} <${email}>\nTopic: ${to.label}\nSent with the contact form at bren.place/contact. Reply to this email to answer them.`,
-    });
+    await send(to, `[${to.label}] Message from ${name}`, "");
   } catch (e) {
-    const code = String((e && e.code) || (e && e.name) || "unknown").slice(0, 60);
-    const detail = String((e && e.message) || "").slice(0, 200);
-    console.error("contact send failed", code, detail);
-    return reply(502, { ok: false, error: "The message didn't send. Try again in a few minutes.", code, detail });
+    const first = errInfo(e);
+    console.error("contact send failed", to.email, first.code, first.detail);
+    /* A work inbox failed, so fall back to the personal one rather than lose the message. */
+    if (to === TO.other) return reply(502, { ok: false, error: "The message didn't send. Try again in a few minutes.", ...first });
+    try {
+      await send(TO.other, `[${to.label}, rerouted] Message from ${name}`,
+        `Note: this was meant for ${to.email}, but sending there failed (${first.code}${first.detail ? ": " + first.detail : ""}), so it came to this inbox instead.\n\n`);
+    } catch (e2) {
+      const second = errInfo(e2);
+      console.error("contact fallback failed", second.code, second.detail);
+      return reply(502, { ok: false, error: "The message didn't send. Try again in a few minutes.", ...second });
+    }
+    return reply(200, { ok: true, rerouted: true });
   }
   return reply(200, { ok: true });
 }
