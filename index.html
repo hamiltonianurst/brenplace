@@ -36,10 +36,11 @@ section{ margin-top:3rem; }
 .social{ display:flex; flex-wrap:wrap; gap:.25rem 1rem; margin-top:1rem; font-size:1.05rem; }
 
 .links li{ padding:.5rem 0; }
-.links a{ display:block; text-decoration:none; }
+.links .title{ display:block; text-decoration:none; }
 .links strong{ font-size:1.5rem; text-decoration:underline; text-underline-offset:4px; text-decoration-thickness:1px; }
-.links a:hover strong{ text-decoration-thickness:3px; }
+.links .title:hover strong{ text-decoration-thickness:3px; }
 .links small{ display:block; font-size:1rem; color:var(--muted); }
+.links small span{ display:block; }
 
 .essay{ padding:1rem 0; border-top:1px solid var(--rule); }
 .essay time{ font-size:.9rem; color:var(--muted); }
@@ -72,7 +73,7 @@ footer{ margin-top:3rem; padding:2rem 0 3rem; color:var(--muted); font-size:.95r
     <h1>Brendan</h1>
     <p class="intro">I help run game and community events, make weird internet things, and occasionally words.</p>
     <ul class="social" aria-label="Elsewhere">
-      <li><a href="brendan.hurst+place@gmail.com">Email</a></li>
+      <li><a href="mailto:brendan.hurst+place@gmail.com">Email</a></li>
       <li><a href="https://hamiltonianurst.substack.com">Substack</a></li>
       <li><a href="https://x.com/hamiltonianurst">Twitter</a></li>
       <li><a href="https://www.instagram.com/hamiltonianurst/">Instagram</a></li>
@@ -84,10 +85,10 @@ footer{ margin-top:3rem; padding:2rem 0 3rem; color:var(--muted); font-size:.95r
   <section aria-labelledby="now-h">
     <h2 id="now-h">Current projects</h2>
     <ul class="links">
-      <li><a href="https://metagame.games"><strong>Metagame</strong><small>A conference on game design and immersive play. <a href="metagame.games/#tickets">Get tickets for Nov 6-8, 2026</a></small></a></li>
-      <li><a href="https://vibe.camp"><strong>Vibecamp</strong><small>A weird summer camp for the terminally online. <a href="https://my.vibe.camp/?ref=vibe.camp#%7B%22currentView%22%3A%22Tickets%22%7D">Get tickets for June 17-20, 2027</a></small></a></li>
-      <li><a href="keyprivate/"><strong>KeyPrivate</strong><small>A word game for 3 or 4 friends, passing one phone around. Alice has to get a word to Bob while Mallory listens.</small></a></li>
-      <li><a href="keypublic/"><strong>KeyPublic</strong><small>The same game for a crowd: one big screen for the host, everyone else plays on their phones.</small></a></li>
+      <li><a class="title" href="https://metagame.games"><strong>Metagame</strong></a><small>A conference on game design and immersive play. Metagame 2026 is complete. Metagame 2027 is coming soon!<span><a href="mailto:brendan@metagame.games">brendan@metagame.games</a></span></small></li>
+      <li><a class="title" href="https://vibe.camp"><strong>Vibecamp</strong></a><small>A weird summer camp for the terminally online.<span><a href="https://my.vibe.camp/?ref=vibe.camp#%7B%22currentView%22%3A%22Tickets%22%7D">Get tickets for June 17-20, 2027</a></span><span><a href="mailto:brendan@vibe.camp">brendan@vibe.camp</a></span></small></li>
+      <li><a class="title" href="keyprivate/"><strong>KeyPrivate</strong><small>A word game for 3 or 4 friends, passing one phone around. Alice has to get a word to Bob while Mallory listens.</small></a></li>
+      <li><a class="title" href="keypublic/"><strong>KeyPublic</strong><small>The same game for a crowd: one big screen for the host, everyone else plays on their phones.</small></a></li>
     </ul>
   </section>
 <!-- ESSAYS:START ... -->
