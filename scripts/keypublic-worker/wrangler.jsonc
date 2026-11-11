@@ -3,6 +3,21 @@
   "main": "src/index.js",
   "compatibility_date": "2026-09-01",
   "routes": [{ "pattern": "keypublic-live.bren.place", "custom_domain": true }],
-  "durable_objects": { "bindings": [{ "name": "ROOMS", "class_name": "Room" }] },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }]
+  "durable_objects": {
+    "bindings": [
+      { "name": "ROOMS", "class_name": "Room" },
+      { "name": "LIMITS", "class_name": "ContactLimiter" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["Room"] },
+    { "tag": "v2", "new_sqlite_classes": ["ContactLimiter"] }
+  ],
+  "send_email": [
+    {
+      "name": "EMAIL",
+      "allowed_destination_addresses": ["brendan@metagame.games", "brendan@vibe.camp", "brendan.hurst+place@gmail.com"],
+      "allowed_sender_addresses": ["contact@bren.place"]
+    }
+  ]
 }

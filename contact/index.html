@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Contact Brendan</title>
+<meta name="description" content="Send Brendan a message about Metagame, Vibecamp, or anything else">
+<meta name="color-scheme" content="light dark">
+<style>
+:root{
+  --bg:#ffffff; --ink:#111827; --muted:#5f6673; --rule:#e3e5e8;
+  --link:#1a3fd6; --visited:#6a2bb3; --field:#ffffff; --error:#b42318; --ok:#067647;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#15171c; --ink:#e8eaee; --muted:#9aa1ad; --rule:#2c3038; --link:#8ea6ff; --visited:#c49bff; --field:#1d2027; --error:#ff8a80; --ok:#6fd49a; }
+}
+*,*::before,*::after{ box-sizing:border-box; }
+html{ -webkit-text-size-adjust:100%; }
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font:1.0625rem/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0);
+}
+main{ max-width:40rem; margin:0 auto; padding:3rem 1.25rem 0; }
+h1{ font-size:clamp(2rem, 8vw, 2.75rem); line-height:1.2; letter-spacing:-.01em; margin:0; }
+a{ color:var(--link); text-underline-offset:3px; text-decoration-thickness:1px; }
+a:visited{ color:var(--visited); }
+a:hover{ text-decoration-thickness:3px; }
+:focus-visible{ outline:3px solid var(--link); outline-offset:3px; border-radius:2px; }
+.back{ display:inline-block; margin-bottom:1.5rem; }
+.intro{ margin:.75rem 0 0; color:var(--muted); }
+
+form{ margin-top:2rem; }
+.field{ margin-top:1.25rem; }
+label{ display:block; font-weight:600; margin-bottom:.3rem; }
+.hint{ display:block; font-weight:400; color:var(--muted); font-size:.95rem; }
+input,select,textarea{
+  display:block; width:100%; font:inherit; color:var(--ink); background:var(--field);
+  border:1px solid var(--muted); border-radius:4px; padding:.55rem .7rem;
+}
+select{ appearance:auto; }
+textarea{ min-height:10rem; resize:vertical; }
+input:focus-visible,select:focus-visible,textarea:focus-visible{ outline:3px solid var(--link); outline-offset:1px; border-color:var(--link); }
+.trap{ position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden; }
+button{
+  margin-top:1.5rem; padding:.7rem 1.2rem; border:0; border-radius:4px; cursor:pointer;
+  font:600 1.0625rem/1.2 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--bg); background:var(--link);
+}
+button:disabled{ opacity:.6; cursor:default; }
+.status{ margin-top:1rem; font-weight:600; }
+.status.error{ color:var(--error); }
+.sent{ margin-top:2rem; padding-top:1rem; border-top:1px solid var(--rule); }
+.sent h2{ font-size:1.5rem; line-height:1.2; margin:0 0 .5rem; color:var(--ok); }
+.sent p{ margin:0 0 .5rem; }
+footer{ margin-top:3rem; padding:2rem 0 3rem; color:var(--muted); font-size:.95rem; border-top:1px solid var(--rule); }
+</style>
+</head>
+<body>
+<main>
+  <a class="back" href="../">Back to bren.place</a>
+  <h1>Contact Brendan</h1>
+  <p class="intro">Pick what it's about and your message goes to the right inbox. I'll reply to the email address you give.</p>
+
+  <form id="form" novalidate>
+    <div class="field">
+      <label for="topic">What's it about?</label>
+      <select id="topic" name="topic">
+        <option value="other">Something else</option>
+        <option value="metagame">Metagame</option>
+        <option value="vibecamp">Vibecamp</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="name">Your name</label>
+      <input id="name" name="name" autocomplete="name" maxlength="100" required>
+    </div>
+    <div class="field">
+      <label for="email">Your email <span class="hint">So I can write back. It isn't shared or published.</span></label>
+      <input id="email" name="email" type="email" autocomplete="email" maxlength="200" required>
+    </div>
+    <div class="field">
+      <label for="message">Message</label>
+      <textarea id="message" name="message" maxlength="5000" required></textarea>
+    </div>
+    <div class="trap" aria-hidden="true">
+      <label for="website">Leave this empty</label>
+      <input id="website" name="website" tabindex="-1" autocomplete="off">
+    </div>
+    <button type="submit" id="send">Send message</button>
+    <p class="status" id="status" role="status" aria-live="polite"></p>
+  </form>
+
+  <footer>Brendan · hamiltonianurst</footer>
+</main>
+<script>
+"use strict";
+const ENDPOINT = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? `http://${location.hostname}:8787/contact` : "https://keypublic-live.bren.place/contact";
+const form = document.getElementById("form"), status = document.getElementById("status"), sendBtn = document.getElementById("send");
+const opened = Date.now();
+const topic = new URLSearchParams(location.search).get("topic");
+if (["metagame","vibecamp","other"].includes(topic)) form.topic.value = topic;
+
+function fail(msg, field){
+  status.textContent = msg; status.className = "status error";
+  if(field) field.focus();
+}
+form.addEventListener("submit", async e => {
+  e.preventDefault();
+  const name = form.name.value.trim(), email = form.email.value.trim(), message = form.message.value.trim();
+  if(!name) return fail("Add your name.", form.name);
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail("Check your email address. It's how I'll reply.", form.email);
+  if(message.length < 2) return fail("Write a message.", form.message);
+  sendBtn.disabled = true; sendBtn.textContent = "Sending…"; status.textContent = ""; status.className = "status";
+  try{
+    const r = await fetch(ENDPOINT, {
+      method:"POST", headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ topic:form.topic.value, name, email, message, website:form.website.value, ms:Date.now()-opened })
+    });
+    const d = await r.json().catch(()=>({ ok:false }));
+    if(!d.ok) throw new Error(d.error || "The message didn't send. Try again in a few minutes.");
+    const label = form.topic.selectedOptions[0].textContent;
+    const done = document.createElement("section");
+    done.className = "sent"; done.setAttribute("tabindex","-1");
+    done.innerHTML = `<h2>Message sent</h2><p></p><p><a href="./">Send another message</a></p>`;
+    done.querySelector("p").textContent = label === "Something else"
+      ? `Thanks, ${name}. I'll reply to ${email}.`
+      : `Thanks, ${name}. It went to my ${label} inbox, and I'll reply to ${email}.`;
+    form.replaceWith(done); done.focus();
+  }catch(err){
+    sendBtn.disabled = false; sendBtn.textContent = "Send message";
+    fail(err.message === "Failed to fetch" || err.name === "TypeError" ? "The message didn't send. Check your connection and try again." : err.message);
+  }
+});
+</script>
+</body>
+</html>

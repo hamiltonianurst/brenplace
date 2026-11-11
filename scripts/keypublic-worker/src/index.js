@@ -1,7 +1,10 @@
-/* KeyPublic game server. One Durable Object per room; every phone holds a WebSocket to it.
+/* KeyPublic game server, plus the bren.place contact form (see contact.js).
+   KeyPublic: One Durable Object per room; every phone holds a WebSocket to it.
    The server owns the game. Each connection is only ever sent what its role may see. */
 import { DurableObject } from "cloudflare:workers";
 import { WORDS } from "./words.js";
+import { handleContact, ContactLimiter } from "./contact.js";
+export { ContactLimiter };
 
 const MAX_PLAYERS = 500;              // change this to cap a room
 const IDLE_MS = 12 * 60 * 60 * 1000;  // rooms clean themselves up after this long untouched
@@ -15,6 +18,7 @@ export default {
   async fetch(req, env) {
     const url = new URL(req.url);
     if (url.pathname === "/health") return new Response("ok");
+    if (url.pathname === "/contact") return handleContact(req, env);
     const m = /^\/room\/([A-Z]{4})$/.exec(url.pathname);
     if (!m) return new Response("Not found", { status: 404 });
     if (req.headers.get("Upgrade") !== "websocket") return new Response("Expected a WebSocket", { status: 426 });
