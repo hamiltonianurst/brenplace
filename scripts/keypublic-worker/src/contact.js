@@ -62,8 +62,10 @@ export async function handleContact(req, env) {
       text: `${message}\n\n---\nFrom: ${name} <${email}>\nTopic: ${to.label}\nSent with the contact form at bren.place/contact. Reply to this email to answer them.`,
     });
   } catch (e) {
-    console.error("contact send failed", e && e.code, e && e.message);
-    return reply(502, { ok: false, error: "The message didn't send. Try again in a few minutes." });
+    const code = String((e && e.code) || (e && e.name) || "unknown").slice(0, 60);
+    const detail = String((e && e.message) || "").slice(0, 200);
+    console.error("contact send failed", code, detail);
+    return reply(502, { ok: false, error: "The message didn't send. Try again in a few minutes.", code, detail });
   }
   return reply(200, { ok: true });
 }

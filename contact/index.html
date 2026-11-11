@@ -117,7 +117,7 @@ form.addEventListener("submit", async e => {
       body: JSON.stringify({ topic:form.topic.value, name, email, message, website:form.website.value, ms:Date.now()-opened })
     });
     const d = await r.json().catch(()=>({ ok:false }));
-    if(!d.ok) throw new Error(d.error || "The message didn't send. Try again in a few minutes.");
+    if(!d.ok) throw new Error((d.error || "The message didn't send. Try again in a few minutes.") + (d.code ? ` (Error: ${d.code}${d.detail ? ", " + d.detail : ""})` : ""));
     const label = form.topic.selectedOptions[0].textContent;
     const done = document.createElement("section");
     done.className = "sent"; done.setAttribute("tabindex","-1");
