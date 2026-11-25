@@ -18,12 +18,12 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Pull latest essays from Substack
         run: python3 scripts/update_essays.py
@@ -34,9 +34,35 @@ jobs:
       - name: Collect site files
         run: rsync -a --exclude '.git' --exclude '.github' --exclude 'scripts' ./ _site/
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
 
+      # GitHub occasionally can't find the artifact that was just uploaded
+      # ("No artifacts named github-pages were found"). It's a timing glitch on
+      # their side, so wait and try again before failing the run.
+      - id: deploy1
+        uses: actions/deploy-pages@v5
+        continue-on-error: true
+
+      - if: steps.deploy1.outcome == 'failure'
+        run: sleep 60
+
+      - id: deploy2
+        if: steps.deploy1.outcome == 'failure'
+        uses: actions/deploy-pages@v5
+        continue-on-error: true
+
+      - if: steps.deploy2.outcome == 'failure'
+        run: sleep 180
+
+      - id: deploy3
+        if: steps.deploy2.outcome == 'failure'
+        uses: actions/deploy-pages@v5
+
       - id: deployment
-        uses: actions/deploy-pages@v4
+        run: echo "page_url=${URL1:-${URL2:-$URL3}}" >> "$GITHUB_OUTPUT"
+        env:
+          URL1: ${{ steps.deploy1.outputs.page_url }}
+          URL2: ${{ steps.deploy2.outputs.page_url }}
+          URL3: ${{ steps.deploy3.outputs.page_url }}
